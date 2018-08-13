@@ -4,9 +4,9 @@ This README would normally document whatever steps are necessary to get your app
 
 ### What is this repository for? ###
 
-This is a simple, ugly single page app which reports the time you have logged in JIRA today, sorted by start time.  It reports ticket, start time, end time, duration, and work log comment.  The ticket ID is a link to the ticket's work log so you can click through to edit if desired.
+This is a simple, ugly single page app which reports the time you have logged in Jira today, sorted by start time.  It reports ticket, start time, end time, duration, and work log comment.  The ticket ID is a link to the ticket's work log so you can click through to edit if desired.
 
-There are fields for user ID (e.g., dev@example.com) and password (whatever you would use to authenticate to JIRA.
+There are fields for user ID (e.g., dev@example.com) and password (whatever you would use to authenticate to Jira).
 
 If you check "Remember Me" the encoded (not encrypted) credentials are stored in browser local storage so you don't have to enter them next time.  DO NOT DO THIS on a shared computer.  Unchecking and submitting clears the local storage.
 
