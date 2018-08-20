@@ -4,7 +4,16 @@ This README would normally document whatever steps are necessary to get your app
 
 ### What is this repository for? ###
 
-This is a simple, ugly single page app which reports the time you have logged in Jira today, sorted by start time.  It reports ticket, start time, end time, duration, and work log comment.  The ticket ID is a link to the ticket's work log so you can click through to edit if desired.
+Some tools for working with Jira data locally.  These are easier to
+develop and see than Jira plugins, and can be used with Jira Cloud
+where you may not have the option of installing a custom plugin.
+
+#### TimeCard ####
+
+A simple, ugly single page app which reports the time you have logged
+in Jira today, sorted by start time.  It reports ticket, start time,
+end time, duration, and work log comment.  The ticket ID is a link to
+the ticket's work log so you can click through to edit if desired.
 
 There are fields for user ID (e.g., dev@example.com) and password (whatever you would use to authenticate to Jira).
 
