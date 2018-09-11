@@ -144,7 +144,7 @@ app.controller('MainCtrl', function($scope, $http, $q) {
                 var worklogs = response.data.worklogs;
 
                 angular.forEach(worklogs, function(worklog, index) {
-                    if (worklog.author.emailAddress == $scope.userId) {
+                    if (worklog.author.name == $scope.userId) {
                         var ms = Date.parse(worklog.started);
                         var s = new Date(ms);
                         if (s >= sop) {
