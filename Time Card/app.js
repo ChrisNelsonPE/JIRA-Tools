@@ -4,20 +4,22 @@ var app = angular.module('jiratime', []);
 // * install
 // https://chrome.google.com/webstore/detail/allow-control-allow-origi/nlfbmbojpeacfghkpbjhddihlkkiljbi?hl=en
 // * enable it
-// * configure it to intercept https://yourCompany.atlassian.net/rest/api/*
+// * configure it to intercept https://<yourJiraRoot>/rest/api/*
 app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
 app.controller('MainCtrl', function($scope, $http, $q) {
-    // Your JIRA server's domain like "https://yourCompany.atlassian.net"
+    // Your Jira server's domain like "yourCompany.atlassian.net" or
+    // "jira.yourCompany.local".  "https://" is assumed and added by
+    // the code when building a request.
     $scope.domain = ""
 
     // Your "recent tickets" filter which has JQL like
-    //   "worklogAuthor = cnelson AND updated > -8h"
+    //   "worklogAuthor = currentUser() AND updated > -8h"
     $scope.filterNumber = "";
 
-    // Your JIRA user ID and password (optionaly cached in local storage)
+    // Your Jira user ID and password (optionaly cached in local storage)
     $scope.userId = "";
     $scope.password = "";
     
