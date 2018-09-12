@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html ng-app="jiraworkload">
+
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.26/angular.min.js"></script>
+  <script src="https://code.angularjs.org/1.5.8/angular.js"></script>
+  <script src="app.js"></script>
+  <script src="node_modules/chart.js/dist/Chart.min.js"></script>
+  <script src="node_modules/angular-chart.js/dist/angular-chart.min.js"></script>
+  <style>
+    td,th {
+    border-style:solid;
+    border-width:thin;
+    padding-left:1em;
+    padding-right:1em;
+    }
+    table {
+    border-collapse: collapse;
+    }
+  </style>
+</head>
+
+<body>
+  <section ng-controller="MainCtrl as vm">
+    <h3>Jira Workload</h3>
+
+    <div>
+      <label>Jira Domain:</label>
+      <input type="text" ng-model="vm.domain"/>
+      <label>Filter:</label>
+      <input type="text" ng-model="vm.filterNumber"/>
+    </div>
+    <br>
+    <div>
+      <label>User id:</label>
+      <input type="text" ng-model="vm.userId"/>
+      <label>Password:</label>
+      <input type="password" ng-model="vm.password"/>
+    </div>
+    <div>
+      <input type="checkbox" ng-model="vm.remember">
+      <label>Remember me</label>
+    </div>
+    <br>
+    <button ng-click="vm.submit()">Get estimates</button><br>
+    <hr>
+
+    <canvas id="bar" class="chart chart-bar"
+            chart-data="vm.workHours"
+            chart-labels="vm.assignees">
+    </canvas>
+    <span>{{vm.message}}</span>
+  </section>
+</body>
+
+</html>
