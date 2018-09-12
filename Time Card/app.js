@@ -10,6 +10,8 @@ app.config(function($httpProvider) {
 });
 
 app.controller('MainCtrl', function($http, $q) {
+    document.title = "Jira Time";
+    
     vm = this;
     // Your Jira server's domain like "yourCompany.atlassian.net" or
     // "jira.yourCompany.local".  "https://" is assumed and added by
