@@ -38,6 +38,18 @@ app.controller('MainCtrl', function($scope, $http, $q) {
         vm.filterNumber = filter;
     }
 
+    // FUTURE - save these in local storage?
+    // Default estimate for unestimated tickets.  Better than 0 but
+    // not really experience-based.
+    vm.defaultEstimateHours = 8;
+
+    // Available hours per day (per developer) after meetings,
+    // unscheduled maintenance, etc.
+    vm.availableHours = 5;
+
+    // Number of days remaining to finish work
+    vm.daysRemaining = 1;
+
     var credential = localStorage.getItem(storageKey+".Cred");
     if (credential != null) {
         var parts = atob(credential).split(":");
@@ -65,18 +77,40 @@ app.controller('MainCtrl', function($scope, $http, $q) {
             localStorage.removeItem(storageKey+".Filter");
             localStorage.removeItem(storageKey+".Cred");
         }
-
-        // FIXME - does this belong in the then below?
-        vm.assignees = [];
-        vm.workHours = [];
         
         getTickets()
             .then(function successCallback(response) {
+                vm.assignees = [];
+                vm.workHours = [];
+
+                // Each person can only work so many hours a day.
+                var capacity = vm.availableHours * vm.daysRemaining;
+                // How many are overworked?
+                var atRisk = 0;
+                
                 // We want the bars in alphabetical order
                 assignees = Object.keys(response).sort();
                 for (var i = 0; i < assignees.length; ++i) {
-                    vm.assignees.push(assignees[i]);
-                    vm.workHours.push(response[assignees[i]]);
+                    var assignee = assignees[i];
+                    var hours = response[assignee];
+                    vm.assignees.push(assignee);
+                    vm.workHours.push(hours);
+                    if (hours >= capacity) {
+                        atRisk++;
+                    }
+                }
+                
+                if (capacity == 0) {
+                    vm.message = "";
+                }
+                else {
+                    vm.message = "Work capacity is " +
+                        capacity + " hours per person.";
+                    if (atRisk) {
+                        vm.message += "  " + atRisk +
+                            (atRisk == 1 ? " is" : " are ") +
+                            " at risk.";
+                    }
                 }
             }, function errorCallback(response) {
                 console.log(response);
@@ -94,14 +128,11 @@ app.controller('MainCtrl', function($scope, $http, $q) {
         }
     };
 
-    // FIXME - make this configurable
-    vm.defaultEstimate = 8;
-
     var getRemainingHours = function(ticket) {
-        if (!ticket.fields.timeestimate) {
+        if (ticket.fields.timeestimate == null) {
             // If there is no estimate at all, default
             if (!ticket.fields.timeoriginalestimate) {
-                return vm.defaultEstimate;
+                return vm.defaultEstimateHours;
             }
             // There is no remaining estimate, but there is a current
             // estimate, scale it from seconds to hours
@@ -138,15 +169,6 @@ app.controller('MainCtrl', function($scope, $http, $q) {
             // FIXME - handle paged data.  We're not done if
             // data.startAt + data..maxResults < data.total
             .then(function successCallback(response) {
-                if (response.data.total > response.data.maxResults) {
-                    vm.message = "Showing results for " +
-                        response.data.maxResults + " of " +
-                        response.data.total + " tickets.";
-                }
-                else {
-                    vm.message = "Showing results for " +
-                        response.data.total + " tickets.";
-                }
                 angular.forEach(response.data.issues, function(issue, index) {
                     var assignee = getAssignee(issue);
                     var hours = getRemainingHours(issue);

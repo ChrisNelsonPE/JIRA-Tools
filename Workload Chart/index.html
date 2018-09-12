@@ -42,6 +42,21 @@
       <label>Remember me</label>
     </div>
     <br>
+    <div>
+      <label>Default estimate:</label>
+      <input type="number" ng-model="vm.defaultEstimateHours"/>
+      hours
+    </div>
+    <div>
+      <label>Availability:</label>
+      <input type="number" ng-model="vm.availableHours"/>
+      hours per day
+    </div>
+    <div>
+      <label>Days remaining:</label>
+      <input type="number" ng-model="vm.daysRemaining"/>
+    </div>
+    <br>
     <button ng-click="vm.submit()">Get estimates</button><br>
     <hr>
 
