@@ -43,29 +43,34 @@
     <button ng-click="vm.submit()">Get time</button><br>
     <hr>
 
-    <span>Total: {{vm.totalHours}}</span><br>
-
+    <div ng-repeat="(author, seconds) in vm.totalSeconds">
+    <h2>{{author}} logged {{(seconds/3600.0).toFixed(2)}} hours</h2><br>
     <table>
       <thead>
-	<tr>
-	  <th>Ticket</th>
-	  <th>Start</th>
-	  <th>End</th>
-	  <th>Duration</th>
-	  <th>Comment</th>
-	</tr>
+        <tr>
+          <th>Ticket</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Duration</th>
+          <th>Comment</th>
+        </tr>
       </thead>
       <tbody ng-init="orderByField='started'">
-	<tr ng-repeat="log in vm.work |orderBy:orderByField">
-	  <td><a href="{{rootUrl}}/browse/{{log.key}}/worklog">{{log.key}}</a></td>
-	  <td>{{log.uiStart | date : 'HH:mm'}}</td>
-	  <td>{{log.uiEnd | date : 'HH:mm'}}</td>
-	  <td>{{log.timeSpent}}</td>
-	  <td>{{log.comment}}</td>
-	</tr>
+        <tr ng-repeat="log in vm.work[author] |orderBy:orderByField">
+          <td>
+            <a href="{{log.ticketLink}}" 
+               title="{{log.ticketSummary}}">
+              {{log.key}}
+            </a>
+          </td>
+          <td>{{log.uiStart | date : 'EEE HH:mm'}}</td>
+          <td>{{log.uiEnd | date : 'HH:mm'}}</td>
+          <td>{{log.timeSpent}}</td>
+          <td>{{log.comment}}</td>
+        </tr>
       </tbody>
     </table>
-
+    </div>
     <span>{{vm.message}}</span>
   </section>
 </body>

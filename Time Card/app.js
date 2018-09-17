@@ -71,14 +71,13 @@ app.controller('MainCtrl', function($http, $q) {
     };
 
     // Returns a promise.  When that promise is satisfied, the data
-    // passed back is a list of keys of recent tickets.
+    // passed back is a list of recent tickets.
     var getRecentTickets = function(){
         var deferred = $q.defer();
-        var keys = [];
 
         // If the API URL isn't yet defined, return an empty list.
         if (vm.apiUrl == undefined) {
-            deferred.resolve(keys);
+            deferred.resolve([]);
         }
         
         $http({
@@ -87,10 +86,7 @@ app.controller('MainCtrl', function($http, $q) {
             headers: { "Authorization": "Basic " + credential }
         })
             .then(function successCallback(response) {
-                angular.forEach(response.data.issues, function(issue,index) {
-                    keys.push(issue.key);
-                });
-                deferred.resolve(keys);
+                deferred.resolve(response.data.issues);
                 
             }, function errorCallback(response) {
                 console.log("Error");
@@ -135,7 +131,9 @@ app.controller('MainCtrl', function($http, $q) {
         return start;
     };
 
-    var getTicketWork = function(key) {
+    var getTicketWork = function(issue) {
+        var key = issue.key;
+
         $http({
             url: vm.apiUrl+"issue/"+key+"/worklog",
             method: "GET",
@@ -147,21 +145,29 @@ app.controller('MainCtrl', function($http, $q) {
                 var worklogs = response.data.worklogs;
 
                 angular.forEach(worklogs, function(worklog, index) {
-                    if (worklog.author.name == vm.userId) {
-                        var ms = Date.parse(worklog.started);
-                        var s = new Date(ms);
-                        if (s >= sop) {
-                            var secondsSpent = parseInt(worklog.timeSpentSeconds);
-                            vm.totalSeconds += secondsSpent;
-                            vm.totalHours = (vm.totalSeconds/3600.0).toFixed(2);
-                            var e = new Date(ms+(secondsSpent*1000));
+                    var ms = Date.parse(worklog.started);
+                    var author = worklog.author.displayName;
+                    if (!vm.totalSeconds.hasOwnProperty(author)) {
+                        vm.totalSeconds[author] = 0;
+                    }
+                    var s = new Date(ms);
+                    if (s >= sop) {
+                        var secondsSpent = parseInt(worklog.timeSpentSeconds);
+                        vm.totalSeconds[author] += secondsSpent;
+   
+                        var e = new Date(ms+(secondsSpent*1000));
 
-                            worklog.key = key;
-                            worklog.uiStart = s;
-                            worklog.uiEnd = e;
-                            
-                            vm.work.push(worklog);
+                        worklog.key = key;
+                        worklog.ticketLink = "https://" + vm.domain 
+                            + "/browse/"+key+"/worklog";
+                        worklog.ticketSummary = issue.fields.summary;
+                        worklog.uiStart = s;
+                        worklog.uiEnd = e;
+                        if (!vm.work.hasOwnProperty(author)) {
+                            vm.work[author] = [];
                         }
+                        
+                        vm.work[author].push(worklog);
                     }
                 });
             }, function errorCallback(response) {
@@ -173,14 +179,14 @@ app.controller('MainCtrl', function($http, $q) {
         // An array of JIRA worklog items from
         // https://docs.atlassian.com/jira/REST/server/#api/2/issue-getIssueWorklog
         // with key, start time and end time added
-        vm.work = []
-
-        vm.totalSeconds = 0;
+        // Worklogs and total seconds by author
+        vm.work = {}
+        vm.totalSeconds = {};
 
         getRecentTickets()
-            .then(function successCallback(keys) {
-                angular.forEach(keys, function(key, index) {
-                    getTicketWork(key);
+            .then(function successCallback(issues) {
+                angular.forEach(issues, function(issue, index) {
+                    getTicketWork(issue);
                 });
             }, function errorCallback(response) {
                 console.log("Error!");
