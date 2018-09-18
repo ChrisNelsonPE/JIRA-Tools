@@ -19,33 +19,33 @@
 </head>
 
 <body>
-  <section ng-controller="MainCtrl">
+  <section ng-controller="MainCtrl as vm">
     <h3>JIRA Time</h3>
 
     <div>
       <label>JIRA Domain:</label>
-      <input type="text" ng-model="domain"/>
+      <input type="text" ng-model="vm.domain"/>
     </div>
     <div>
       <label>Filter:</label>
-      <input type="text" ng-model="filterNumber"/>
+      <input type="text" ng-model="vm.filterNumber"/>
     </div>
     <div>
       <label>User id:</label>
-      <input type="text" ng-model="userId"/>
+      <input type="text" ng-model="vm.userId"/>
     </div>
     <div>
       <label>Password:</label>
-      <input type="password" ng-model="password"/>
+      <input type="password" ng-model="vm.password"/>
     </div>
     <div>
-      <input type="checkbox" ng-model="remember">
+      <input type="checkbox" ng-model="vm.remember">
       <label>Remember me</label>
     </div>
-    <button ng-click="submit()">Get time</button><br>
+    <button ng-click="vm.submit()">Get time</button><br>
     <hr>
 
-    <span>Total: {{totalHours}}</span><br>
+    <span>Total: {{vm.totalHours}}</span><br>
 
     <table>
       <thead>
@@ -58,7 +58,7 @@
 	</tr>
       </thead>
       <tbody ng-init="orderByField='started'">
-	<tr ng-repeat="log in work |orderBy:orderByField">
+	<tr ng-repeat="log in vm.work |orderBy:orderByField">
 	  <td><a href="{{rootUrl}}/browse/{{log.key}}/worklog">{{log.key}}</a></td>
 	  <td>{{log.uiStart | date : 'HH:mm'}}</td>
 	  <td>{{log.uiEnd | date : 'HH:mm'}}</td>
@@ -68,7 +68,7 @@
       </tbody>
     </table>
 
-    <span>{{message}}</span>
+    <span>{{vm.message}}</span>
   </section>
 </body>
 

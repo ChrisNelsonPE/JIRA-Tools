@@ -9,51 +9,52 @@ app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
-app.controller('MainCtrl', function($scope, $http, $q) {
+app.controller('MainCtrl', function($http, $q) {
+    vm = this;
     // Your Jira server's domain like "yourCompany.atlassian.net" or
     // "jira.yourCompany.local".  "https://" is assumed and added by
     // the code when building a request.
-    $scope.domain = ""
+    vm.domain = ""
 
     // Your "recent tickets" filter which has JQL like
     //   "worklogAuthor = currentUser() AND updated > -8h"
-    $scope.filterNumber = "";
+    vm.filterNumber = "";
 
     // Your Jira user ID and password (optionaly cached in local storage)
-    $scope.userId = "";
-    $scope.password = "";
+    vm.userId = "";
+    vm.password = "";
     
     var storageKey = "jiraTime";
 
     var domain = localStorage.getItem(storageKey+".Domain");
     if (domain != null) {
-        $scope.domain = domain;
+        vm.domain = domain;
     }
 
     var filter = localStorage.getItem(storageKey+".Filter");
     if (filter != null) {
-        $scope.filterNumber = filter;
+        vm.filterNumber = filter;
     }
 
     var credential = localStorage.getItem(storageKey+".Cred");
     if (credential != null) {
         var parts = atob(credential).split(":");
-        $scope.userId = parts[0];
-        $scope.password = parts[1]
+        vm.userId = parts[0];
+        vm.password = parts[1]
         // If we found credentials, it's because the user wanted last time
         // to remember them so set remember true now, too.
-        $scope.remember = true;
+        vm.remember = true;
     }
 
-    $scope.submit = function() {
-        $scope.apiUrl = "https://" + $scope.domain + "/rest/api/2/";
+    vm.submit = function() {
+        vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
 
-        credential = btoa($scope.userId + ":" + $scope.password);
+        credential = btoa(vm.userId + ":" + vm.password);
         
-        if ($scope.remember) {
+        if (vm.remember) {
             console.log("Setting local storage");
-            localStorage.setItem(storageKey+".Domain", $scope.domain);
-            localStorage.setItem(storageKey+".Filter", $scope.filterNumber);
+            localStorage.setItem(storageKey+".Domain", vm.domain);
+            localStorage.setItem(storageKey+".Filter", vm.filterNumber);
             localStorage.setItem(storageKey+".Cred", credential);
         }
         else {
@@ -63,23 +64,23 @@ app.controller('MainCtrl', function($scope, $http, $q) {
             localStorage.removeItem(storageKey+".Cred");
         }
 
-        $scope.getWork();
+        getWork();
         
     };
 
     // Returns a promise.  When that promise is satisfied, the data
     // passed back is a list of keys of recent tickets.
-    $scope.getRecentTickets = function(){
+    var getRecentTickets = function(){
         var deferred = $q.defer();
         var keys = [];
 
         // If the API URL isn't yet defined, return an empty list.
-        if ($scope.apiUrl == undefined) {
+        if (vm.apiUrl == undefined) {
             deferred.resolve(keys);
         }
         
         $http({
-            url: $scope.apiUrl + "search?jql=filter=" + $scope.filterNumber,
+            url: vm.apiUrl + "search?jql=filter=" + vm.filterNumber,
             method: "GET",
             headers: { "Authorization": "Basic " + credential }
         })
@@ -97,8 +98,8 @@ app.controller('MainCtrl', function($scope, $http, $q) {
         return deferred.promise;
     };
 
-    $scope.scales = [ "day", "week", "month" ];
-    $scope.scale = "day";
+    vm.scales = [ "day", "week", "month" ];
+    vm.scale = "day";
 
     // Compute start of period (day, week, month) from reference date,
     // typically now.
@@ -132,32 +133,32 @@ app.controller('MainCtrl', function($scope, $http, $q) {
         return start;
     };
 
-    $scope.getTicketWork = function(key) {
+    var getTicketWork = function(key) {
         $http({
-            url: $scope.apiUrl+"issue/"+key+"/worklog",
+            url: vm.apiUrl+"issue/"+key+"/worklog",
             method: "GET",
             headers: { "Authorization": "Basic " + credential }
         })
             .then(function successCallback(response) {
-                var sop = startOfPeriod(new Date(Date.now()), $scope.scale);
+                var sop = startOfPeriod(new Date(Date.now()), vm.scale);
                 
                 var worklogs = response.data.worklogs;
 
                 angular.forEach(worklogs, function(worklog, index) {
-                    if (worklog.author.name == $scope.userId) {
+                    if (worklog.author.name == vm.userId) {
                         var ms = Date.parse(worklog.started);
                         var s = new Date(ms);
                         if (s >= sop) {
                             var secondsSpent = parseInt(worklog.timeSpentSeconds);
-                            $scope.totalSeconds += secondsSpent;
-                            $scope.totalHours = ($scope.totalSeconds/3600.0).toFixed(2);
+                            vm.totalSeconds += secondsSpent;
+                            vm.totalHours = (vm.totalSeconds/3600.0).toFixed(2);
                             var e = new Date(ms+(secondsSpent*1000));
 
                             worklog.key = key;
                             worklog.uiStart = s;
                             worklog.uiEnd = e;
                             
-                            $scope.work.push(worklog);
+                            vm.work.push(worklog);
                         }
                     }
                 });
@@ -166,18 +167,18 @@ app.controller('MainCtrl', function($scope, $http, $q) {
             });
     };
 
-    $scope.getWork = function() {
+    var getWork = function() {
         // An array of JIRA worklog items from
         // https://docs.atlassian.com/jira/REST/server/#api/2/issue-getIssueWorklog
         // with key, start time and end time added
-        $scope.work = []
+        vm.work = []
 
-        $scope.totalSeconds = 0;
+        vm.totalSeconds = 0;
 
-        $scope.getRecentTickets()
+        getRecentTickets()
             .then(function successCallback(keys) {
                 angular.forEach(keys, function(key, index) {
-                    $scope.getTicketWork(key);
+                    getTicketWork(key);
                 });
             }, function errorCallback(response) {
                 console.log("Error!");
