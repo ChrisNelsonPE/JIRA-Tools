@@ -80,8 +80,16 @@ app.controller('MainCtrl', function($http, $q) {
             deferred.resolve([]);
         }
         
+        // The filter should limit whose work is returned without a time
+        // limit
+        var url = vm.apiUrl + "search?jql=filter=" + vm.filterNumber;
+
+        // Add a date limit
+        var sop = startOfPeriod(new Date(Date.now()), vm.scale, vm.offset);
+        url += " and worklogDate >=" + sop.toISOString().substring(0,10);
+
         $http({
-            url: vm.apiUrl + "search?jql=filter=" + vm.filterNumber,
+            url: url,
             method: "GET",
             headers: { "Authorization": "Basic " + credential }
         })
