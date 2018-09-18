@@ -40,6 +40,14 @@
       <label>Remember me</label>
     </div>
     <br>
+    <div>
+      <label>Scale:</label>
+      <span ng-repeat="s in vm.scales">
+        <input type="radio" name="scale" value="{{s}}" ng-model="vm.scale"/>
+        {{s}}
+      </span>
+    </div>
+    <br>
     <button ng-click="vm.submit()">Get time</button><br>
     <hr>
 
