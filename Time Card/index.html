@@ -41,6 +41,13 @@
     </div>
     <br>
     <div>
+      <label>Offset:</label>
+      <span ng-repeat="o in vm.offsets">
+        <input type="radio" name="offset" value="{{o}}" ng-model="vm.offset"/>
+        {{o}}
+      </span>
+    </div>
+    <div>
       <label>Scale:</label>
       <span ng-repeat="s in vm.scales">
         <input type="radio" name="scale" value="{{s}}" ng-model="vm.scale"/>

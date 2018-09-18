@@ -88,6 +88,13 @@ app.controller('MainCtrl', function($http, $q) {
         var sop = startOfPeriod(new Date(Date.now()), vm.scale, vm.offset);
         url += " and worklogDate >=" + sop.toISOString().substring(0,10);
 
+        // Current period is "to date" so there is no upper limit
+        // Previous period ends at the start of the current period.
+        if (vm.offset == "previous") {
+            var eop = startOfPeriod(new Date(Date.now()), vm.scale, "current");
+            url += " and worklogDate <" + eop.toISOString().substring(0,10);
+        }
+
         $http({
             url: url,
             method: "GET",
@@ -107,12 +114,15 @@ app.controller('MainCtrl', function($http, $q) {
     vm.scales = [ "day", "week", "month" ];
     vm.scale = "day";
 
+    vm.offsets = [ "previous", "current" ];
+    vm.offset = "current";
+
     // Compute start of period (day, week, month) from reference date,
     // typically now.
     //
     // @param reference a Date object
     // @return a date object at the start of the period
-    var startOfPeriod = function(reference, scale) {
+    var startOfPeriod = function(reference, scale, offset) {
         var start = reference;
 
         // We always want to start at midnight so we always zero out the
@@ -122,17 +132,37 @@ app.controller('MainCtrl', function($http, $q) {
         start.setSeconds(0);
         
         switch (scale) {
+        case 'day':
+            // If previous day, subtract a day of milliseconds
+            if (offset == "previous") {
+                var ms = start.getTime();
+                ms -= 24 * 60 * 60 * 1000;
+                start.setTime(ms);
+            }
+            break;
         case 'week':
             // There is no setDay() so we have to get today's day-of-week
             // and subtract enough time to get to the start of the week
             var ms = start.getTime();
             ms -= start.getDay() * 24 * 60 * 60 * 1000;
+            // If previous week, subtract a week of milliseconds
+            if (offset == "previous") {
+                ms -= 7 * 24 * 60 * 60 * 1000;
+            }
             start.setTime(ms);
             break;
             
         case 'month':
-            // Set day of month to 1 and we're done
+            // Set day of month to 1
             start.setDate(1)
+            // If previous month, subtract a day (to get to end of
+            // previous month) then set day of month to 1 again.
+            if (offset == "previous") {
+                var ms = start.getTime();
+                ms -= 24 * 60 * 60 * 1000;
+                start.setTime(ms);
+                start.setDate(1)
+            }
             break;
         }
         
@@ -148,7 +178,21 @@ app.controller('MainCtrl', function($http, $q) {
             headers: { "Authorization": "Basic " + credential }
         })
             .then(function successCallback(response) {
-                var sop = startOfPeriod(new Date(Date.now()), vm.scale);
+                var sop = startOfPeriod(new Date(Date.now()),
+                                        vm.scale,
+                                        vm.offset);
+                var eop;
+                // The end of the previous period is the start of the current
+                if (vm.offset == "previous") {
+                    eop = startOfPeriod(new Date(Date.now()),
+                                            vm.scale,
+                                            "current");
+                }
+                // The current period ends now
+                else {
+                    eop = new Date(Date.now());
+                }
+
                 
                 var worklogs = response.data.worklogs;
 
@@ -158,19 +202,19 @@ app.controller('MainCtrl', function($http, $q) {
                     if (!vm.totalSeconds.hasOwnProperty(author)) {
                         vm.totalSeconds[author] = 0;
                     }
-                    var s = new Date(ms);
-                    if (s >= sop) {
+                    var start = new Date(ms);
+                    if (start >= sop && start < eop) {
                         var secondsSpent = parseInt(worklog.timeSpentSeconds);
                         vm.totalSeconds[author] += secondsSpent;
    
-                        var e = new Date(ms+(secondsSpent*1000));
+                        var end = new Date(ms+(secondsSpent*1000));
 
                         worklog.key = key;
                         worklog.ticketLink = "https://" + vm.domain 
                             + "/browse/"+key+"/worklog";
                         worklog.ticketSummary = issue.fields.summary;
-                        worklog.uiStart = s;
-                        worklog.uiEnd = e;
+                        worklog.uiStart = start;
+                        worklog.uiEnd = end;
                         if (!vm.work.hasOwnProperty(author)) {
                             vm.work[author] = [];
                         }
