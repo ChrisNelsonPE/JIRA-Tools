@@ -9,7 +9,7 @@ app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
-app.controller('MainCtrl', function($scope, $http, $q) {
+app.controller('MainCtrl', function($window, $http, $q) {
     document.title = "Jira Workload";
 
     vm = this;
@@ -136,6 +136,27 @@ app.controller('MainCtrl', function($scope, $http, $q) {
         
     };
 
+    vm.onChartClick = function(points, evt) {
+        // The base URL: matches filter for the chart
+        // AND limited by assignee
+        var url = "https://" + vm.domain + "/issues/"
+            + "?jql=filter=" + vm.filterNumber
+            + " AND assignee";
+
+        // Get the bar index
+        var index = points[0]._index;
+        // Look up the ID
+        var id = assigneeIds[index];
+        // Add the rest of the assignee clause
+        if (id == "unassigned") {
+            url += " is empty";
+        } else {
+            url += "="+id;
+        }
+        
+        $window.open(url);
+    }
+
     var getAssignee = function(ticket) {
         // If undefined, null, or empty, return Unassigned
         if (!ticket.fields.assignee) {
@@ -147,7 +168,7 @@ app.controller('MainCtrl', function($scope, $http, $q) {
         else {
             return {
                 name: ticket.fields.assignee.displayName,
-                id: ticket.fields.assignee.key
+                id: ticket.fields.assignee.name
             };
         }
     };

@@ -62,7 +62,8 @@
 
     <canvas id="bar" class="chart chart-bar"
             chart-data="vm.workHours"
-            chart-labels="vm.assignees">
+            chart-labels="vm.assigneeNames"
+            chart-click="vm.onChartClick">
     </canvas>
     <span>{{vm.message}}</span>
   </section>
