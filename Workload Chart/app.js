@@ -50,6 +50,17 @@ app.controller('MainCtrl', function($scope, $http, $q) {
     // Number of days remaining to finish work
     vm.daysRemaining = 1;
 
+    // Interaction with the chart is by index.  We display the
+    // assignee display names (e.g., "Mickey Mouse") and assigned
+    // hours.
+    vm.assigneeNames = [];
+    vm.workHours = [];
+
+    // In the click handler, we get the index but want to be able to
+    // look up the Jira username/ID (e.g., "mmouse") so we build an
+    // array of IDs in the same order as we populate the chart data.
+    var assigneeIds = [];
+    
     var credential = localStorage.getItem(storageKey+".Cred");
     if (credential != null) {
         var parts = atob(credential).split(":");
@@ -78,22 +89,29 @@ app.controller('MainCtrl', function($scope, $http, $q) {
             localStorage.removeItem(storageKey+".Cred");
         }
         
+        // Clear any data from previous submissions
+        vm.assigneeNames = [];
+        vm.workHours = [];
+        assigneeIds = [];
+        
         getTickets()
             .then(function successCallback(response) {
-                vm.assignees = [];
-                vm.workHours = [];
-
                 // Each person can only work so many hours a day.
                 var capacity = vm.availableHours * vm.daysRemaining;
                 // How many are overworked?
                 var atRisk = 0;
-                
-                // We want the bars in alphabetical order
-                assignees = Object.keys(response).sort();
-                for (var i = 0; i < assignees.length; ++i) {
-                    var assignee = assignees[i];
-                    var hours = response[assignee];
-                    vm.assignees.push(assignee);
+
+                // Response is a hash indexed by display name.  We
+                // want the bars in alphabetical order
+                vm.assigneeNames = Object.keys(response).sort();
+                // Iterate over array of names and push hours and ID
+                // on to arrays
+                for (var i = 0; i < vm.assigneeNames.length; ++i) {
+                    var assigneeName = vm.assigneeNames[i];
+                    
+                    assigneeIds.push(response[assigneeName].id);
+                    
+                    var hours = response[assigneeName].hours;
                     vm.workHours.push(hours);
                     if (hours >= capacity) {
                         atRisk++;
@@ -121,10 +139,16 @@ app.controller('MainCtrl', function($scope, $http, $q) {
     var getAssignee = function(ticket) {
         // If undefined, null, or empty, return Unassigned
         if (!ticket.fields.assignee) {
-            return "Unassigned";
+            return {
+                name: "Unassigned",
+                id: "unassigned"
+            };
         }
         else {
-            return ticket.fields.assignee.displayName;
+            return {
+                name: ticket.fields.assignee.displayName,
+                id: ticket.fields.assignee.key
+            };
         }
     };
 
@@ -148,7 +172,8 @@ app.controller('MainCtrl', function($scope, $http, $q) {
     };
 
     // Returns a promise.  When that promise is satisfied, the data
-    // passed back is remaining estimate per assignee
+    // passed back is a hash indexed by display name.  Each item is hours
+    // worked and username (id)
     var getTickets = function(){
         var deferred = $q.defer();
         var workByAssignee = {};
@@ -171,11 +196,15 @@ app.controller('MainCtrl', function($scope, $http, $q) {
             .then(function successCallback(response) {
                 angular.forEach(response.data.issues, function(issue, index) {
                     var assignee = getAssignee(issue);
-                    var hours = getRemainingHours(issue);
-                    if (! workByAssignee.hasOwnProperty(assignee)) {
-                        workByAssignee[assignee] = 0;
+                    
+                    if (! workByAssignee.hasOwnProperty(assignee.name)) {
+                        workByAssignee[assignee.name] = {
+                            hours: 0,
+                            id: assignee.id
+                        };
                     }
-                    workByAssignee[assignee] += hours;
+                    workByAssignee[assignee.name].hours
+                        += getRemainingHours(issue);
                 });
                 deferred.resolve(workByAssignee);
                 
