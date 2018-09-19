@@ -199,13 +199,14 @@ app.controller('MainCtrl', function($http, $q) {
                 angular.forEach(worklogs, function(worklog, index) {
                     var ms = Date.parse(worklog.started);
                     var author = worklog.author.displayName;
-                    if (!vm.totalSeconds.hasOwnProperty(author)) {
-                        vm.totalSeconds[author] = 0;
+                    if (!vm.secondsByAuthor.hasOwnProperty(author)) {
+                        vm.secondsByAuthor[author] = 0;
                     }
                     var start = new Date(ms);
                     if (start >= sop && start < eop) {
                         var secondsSpent = parseInt(worklog.timeSpentSeconds);
-                        vm.totalSeconds[author] += secondsSpent;
+                        vm.secondsByAuthor[author] += secondsSpent;
+                        vm.totalSeconds += secondsSpent;
    
                         var end = new Date(ms+(secondsSpent*1000));
 
@@ -233,7 +234,8 @@ app.controller('MainCtrl', function($http, $q) {
         // with key, start time and end time added
         // Worklogs and total seconds by author
         vm.work = {}
-        vm.totalSeconds = {};
+        vm.secondsByAuthor = {};
+        vm.totalSeconds = 0;
 
         getRecentTickets()
             .then(function successCallback(issues) {

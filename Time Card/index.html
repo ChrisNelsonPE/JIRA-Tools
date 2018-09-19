@@ -58,7 +58,12 @@
     <button ng-click="vm.submit()">Get time</button><br>
     <hr>
 
-    <div ng-repeat="(author, seconds) in vm.totalSeconds">
+    <span ng-show="vm.secondsByAuthor">
+      <span style="text-transform:capitalize">{{vm.offset}}</span> {{vm.scale}}
+      {{vm.offset == "current" ? "has" : "had"}}
+      {{(vm.totalSeconds/3600).toFixed(2)}} hours logged.
+    </span>
+    <div ng-repeat="(author, seconds) in vm.secondsByAuthor">
     <h2>{{author}} logged {{(seconds/3600.0).toFixed(2)}} hours</h2><br>
     <table>
       <thead>
