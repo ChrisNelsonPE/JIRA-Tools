@@ -80,9 +80,17 @@ app.controller('MainCtrl', function($http, $q) {
             deferred.resolve([]);
         }
         
-        // The filter should limit whose work is returned without a time
-        // limit
-        var url = vm.apiUrl + "search?jql=filter=" + vm.filterNumber;
+        var url = vm.apiUrl + "search";
+
+        // The default maxResults is 50.  There are often more tickets
+        // worked on in a week, surely in a month.  We should handle
+        // paging but for now let's just ask for a lot of tickets.
+        url += "?maxResults=1000";
+
+        // The filter should limit whose work is returned without a
+        // time limit like "worklogAuthor = currentUser()" or
+        // "worklogAuthor in membersOf(myGroup)"
+        url += "&jql=filter=" + vm.filterNumber;
 
         // Add a date limit
         var sop = startOfPeriod(new Date(Date.now()), vm.scale, vm.offset);
@@ -101,8 +109,12 @@ app.controller('MainCtrl', function($http, $q) {
             headers: { "Authorization": "Basic " + credential }
         })
             .then(function successCallback(response) {
+                if (response.data.total > response.data.maxResults) {
+                    alert("Not all tickets processed." +
+                          " Got " + response.data.maxResults +
+                          " out of " + response.data.total);
+                }
                 deferred.resolve(response.data.issues);
-                
             }, function errorCallback(response) {
                 console.log("Error");
                 deferred.reject(response);
