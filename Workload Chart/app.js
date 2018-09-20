@@ -96,43 +96,42 @@ app.controller('MainCtrl', function($window, $http, $q) {
         
         getTickets()
             .then(function successCallback(tickets) {
+                var estimates = tickets.map(estimateFromTicket);
+                                
+                // A hash indexed by display name.  Each element
+                // summarizes the work for that assignee.
                 var workByAssignee = {};
-        
-                angular.forEach(tickets, function(ticket, index) {
-                    var assignee = getAssignee(ticket);
-                    
-                    if (! workByAssignee.hasOwnProperty(assignee.name)) {
-                        // TODO - add ticket count by assignee
-                        workByAssignee[assignee.name] = {
+
+                angular.forEach(estimates, function(e, index) {
+                    if (!workByAssignee.hasOwnProperty(e.assigneeName)) {
+                        workByAssignee[e.assigneeName] = {
                             hours: 0,
-                            id: assignee.id
+                            tickets: 0,
+                            id: e.assigneeId
                         };
                     }
-                    workByAssignee[assignee.name].hours
-                        += getRemainingHours(ticket);
+                    workByAssignee[e.assigneeName].hours += e.hours;
+                    workByAssignee[e.assigneeName].tickets++;
                 });
+
+                // We want the bars in alphabetical order
+                var sortedNames = Object.keys(workByAssignee).sort();
+                // "Name" label will include ticket count.
+                vm.assigneeNames = sortedNames.map(
+                    function(k) { return k +
+                                  " (" + workByAssignee[k].tickets + ")"; });
+                // The height of the bar is hours.
+                vm.workHours = sortedNames.map(
+                    function(k) { return workByAssignee[k].hours; });
+                // Keep track of IDs in the same order so we can
+                // process clicks.
+                assigneeIds = sortedNames.map(
+                    function(k) { return workByAssignee[k].id; });
+
                 
                 // Each person can only work so many hours a day.
+                // Zero means "don't show capacity and overwork."
                 var capacity = vm.availableHours * vm.daysRemaining;
-                // How many are overworked?
-                var atRisk = 0;
-
-                // Response is a hash indexed by display name.  We
-                // want the bars in alphabetical order
-                vm.assigneeNames = Object.keys(workByAssignee).sort();
-                // Iterate over array of names and push hours and ID
-                // on to arrays
-                for (var i = 0; i < vm.assigneeNames.length; ++i) {
-                    var assigneeName = vm.assigneeNames[i];
-                    
-                    assigneeIds.push(workByAssignee[assigneeName].id);
-                    
-                    var hours = workByAssignee[assigneeName].hours;
-                    vm.workHours.push(hours);
-                    if (hours >= capacity) {
-                        atRisk++;
-                    }
-                }
                 
                 if (capacity == 0) {
                     vm.message = "";
@@ -140,6 +139,12 @@ app.controller('MainCtrl', function($window, $http, $q) {
                 else {
                     vm.message = "Work capacity is " +
                         capacity + " hours per person.";
+                    
+                    // How many are overworked?
+                    var atRisk = Object.keys(workByAssignee)
+                        .filter(key => workByAssignee[key].hours > capacity)
+                        .length;
+
                     if (atRisk) {
                         vm.message += "  " + atRisk +
                             (atRisk == 1 ? " is" : " are ") +
@@ -173,6 +178,15 @@ app.controller('MainCtrl', function($window, $http, $q) {
         $window.open(url);
     }
 
+    var estimateFromTicket = function(ticket) {
+        var assignee = getAssignee(ticket);
+        return {
+            assigneeId : assignee.id,
+            assigneeName : assignee.name,
+            hours : getRemainingHours(ticket)
+        };
+    }
+        
     var getAssignee = function(ticket) {
         // If undefined, null, or empty, return Unassigned
         if (!ticket.fields.assignee) {
