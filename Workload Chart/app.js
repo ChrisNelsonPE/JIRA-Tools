@@ -95,7 +95,23 @@ app.controller('MainCtrl', function($window, $http, $q) {
         assigneeIds = [];
         
         getTickets()
-            .then(function successCallback(response) {
+            .then(function successCallback(tickets) {
+                var workByAssignee = {};
+        
+                angular.forEach(tickets, function(ticket, index) {
+                    var assignee = getAssignee(ticket);
+                    
+                    if (! workByAssignee.hasOwnProperty(assignee.name)) {
+                        // TODO - add ticket count by assignee
+                        workByAssignee[assignee.name] = {
+                            hours: 0,
+                            id: assignee.id
+                        };
+                    }
+                    workByAssignee[assignee.name].hours
+                        += getRemainingHours(ticket);
+                });
+                
                 // Each person can only work so many hours a day.
                 var capacity = vm.availableHours * vm.daysRemaining;
                 // How many are overworked?
@@ -103,15 +119,15 @@ app.controller('MainCtrl', function($window, $http, $q) {
 
                 // Response is a hash indexed by display name.  We
                 // want the bars in alphabetical order
-                vm.assigneeNames = Object.keys(response).sort();
+                vm.assigneeNames = Object.keys(workByAssignee).sort();
                 // Iterate over array of names and push hours and ID
                 // on to arrays
                 for (var i = 0; i < vm.assigneeNames.length; ++i) {
                     var assigneeName = vm.assigneeNames[i];
                     
-                    assigneeIds.push(response[assigneeName].id);
+                    assigneeIds.push(workByAssignee[assigneeName].id);
                     
-                    var hours = response[assigneeName].hours;
+                    var hours = workByAssignee[assigneeName].hours;
                     vm.workHours.push(hours);
                     if (hours >= capacity) {
                         atRisk++;
@@ -193,15 +209,13 @@ app.controller('MainCtrl', function($window, $http, $q) {
     };
 
     // Returns a promise.  When that promise is satisfied, the data
-    // passed back is a hash indexed by display name.  Each item is hours
-    // worked and username (id)
+    // passed back a list of tickets matching the Jira filter.
     var getTickets = function(){
         var deferred = $q.defer();
-        var workByAssignee = {};
 
         // If the API URL isn't yet defined, return an empty list.
         if (vm.apiUrl == undefined) {
-            deferred.resolve(estimates);
+            deferred.resolve([]);
         }
         
         $http({
@@ -215,20 +229,7 @@ app.controller('MainCtrl', function($window, $http, $q) {
             // FIXME - handle paged data.  We're not done if
             // data.startAt + data..maxResults < data.total
             .then(function successCallback(response) {
-                angular.forEach(response.data.issues, function(issue, index) {
-                    var assignee = getAssignee(issue);
-                    
-                    if (! workByAssignee.hasOwnProperty(assignee.name)) {
-                        workByAssignee[assignee.name] = {
-                            hours: 0,
-                            id: assignee.id
-                        };
-                    }
-                    workByAssignee[assignee.name].hours
-                        += getRemainingHours(issue);
-                });
-                deferred.resolve(workByAssignee);
-                
+                deferred.resolve(response.data.issues);
             }, function errorCallback(response) {
                 // CORS is handled by the client but we want to pass
                 // something back to the caller.
