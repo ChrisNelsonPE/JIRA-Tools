@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html ng-app="jiragantt">
+
+<head>
+  <link rel="stylesheet" type="text/css" href="jsgantt.css" />
+  <script language="javascript" src="jsgantt.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.26/angular.min.js"></script>
+  <script src="https://code.angularjs.org/1.5.8/angular.js"></script>
+  <script src="app.js"></script>
+</head>
+
+<body>
+  <section ng-controller="MainCtrl as vm">
+    <h3>Jira Gantt</h3>
+
+    <div>
+      <label>Jira Domain:</label>
+      <input type="text" ng-model="vm.domain"/>
+      <label>Filter:</label>
+      <input type="text" ng-model="vm.filterNumber"/>
+    </div>
+    <br>
+    <div>
+      <label>User id:</label>
+      <input type="text" ng-model="vm.userId"/>
+      <label>Password:</label>
+      <input type="password" ng-model="vm.password"/>
+    </div>
+    <div>
+      <input type="checkbox" ng-model="vm.remember">
+      <label>Remember me</label>
+    </div>
+    <br>
+    <div>
+      <label>Default estimate:</label>
+      <input type="number" ng-model="vm.defaultEstimateHours"/>
+      hours
+    </div>
+    <div>
+      <label>Availability:</label>
+      <input type="number" ng-model="vm.availableHours"/>
+      hours per day
+    </div>
+    <div>
+      <label>Days remaining:</label>
+      <input type="number" ng-model="vm.daysRemaining"/>
+    </div>
+    <br>
+    <button ng-click="vm.submit()">Get estimates</button><br>
+    <hr>
+
+    <div style="position:relative" class="gantt" id="GanttChartDIV"></div>    
+
+    <span>{{vm.message}}</span>
+  </section>
+</body>
+
+</html>
