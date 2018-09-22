@@ -109,8 +109,8 @@ function mouseDown(e) {
  * @param g - Gantt that this task is being added to
  * @param pID {Number} Task unique numeric ID
  * @param pName {String} Task Name
- * @param pStart {Date} Task start date/time (not required for pGroup=1 )
- * @param pEnd {Date} Task end date/time, you can set the end time to 12:00 to indicate half-day (not required for pGroup=1 )
+ * @param pStart {Date} Task start date/time (not required for pGroup true)
+ * @param pEnd {Date} Task end date/time, you can set the end time to 12:00 to indicate half-day (not required for pGroup true)
  * @param pDisplay {String} How to display the task.  "class=classname" or "style=style string" or a color ("#rgb" or a color name)
  * @param pLink {String} Task URL, clicking on the task will redirect to this url. Leave empty if you do not with the Task also serve as a link
  * @param pMile {Boolean} Determines whether task is a milestone (1=Yes,0=No)
@@ -321,7 +321,7 @@ JSGantt.TaskItem = function(g, pID, pName, pStart, pEnd, pDisplay, pLink, pMile,
     var x1, y1, x2, y2;
 
 
-    if (vGroup != 1)
+    if (!vGroup)
     {  
         vStart = JSGantt.parseDateStr(pStart,g.getDateInputFormat());
         vEnd   = JSGantt.parseDateStr(pEnd,g.getDateInputFormat());
@@ -1943,7 +1943,7 @@ JSGantt.processRows = function(pList, pID, pRow, pLevel, pOpen)
             pList[i].setLevel(vLevel);
             vNumKid++;
 
-            if (pList[i].getGroup() == 1) {
+            if (pList[i].getGroup()) {
                 JSGantt.processRows(vList, pList[i].getID(), i, 
                                     vLevel+1, vVisible);
             }
@@ -1967,7 +1967,7 @@ JSGantt.processRows = function(pList, pID, pRow, pLevel, pOpen)
         pList[pRow].setStart(vMinDate);
         pList[pRow].setEnd(vMaxDate);
         pList[pRow].setNumKid(vNumKid);
-        if (pList[pRow].getGroup() == 1) {
+        if (pList[pRow].getGroup()) {
             pList[pRow].setWorkVal(vWorkSum);
             pList[pRow].setEstVal(vEstSum);
         }
@@ -2286,7 +2286,7 @@ JSGantt.hide=     function (pID,ganttObj) {
             JSGantt.findObj(ganttObj.getID()+'_child_' + vID).style.display = "none";
             JSGantt.findObj(ganttObj.getID()+'_childgrid_' + vID).style.display = "none";
             vList[i].setVisible(0);
-            if(vList[i].getGroup() == 1) 
+            if(vList[i].getGroup()) 
             {JSGantt.hide(vID,ganttObj);}
         }
 
@@ -2347,7 +2347,7 @@ JSGantt.show =  function (pID, pTop, ganttObj) {
                 }
             }
 
-            if(vList[i].getGroup() == 1) 
+            if(vList[i].getGroup()) 
             {JSGantt.show(vID, 0,ganttObj);}
 
         }
