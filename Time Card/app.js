@@ -129,6 +129,8 @@ app.controller('MainCtrl', function($http, $q) {
     vm.offsets = [ "previous", "current" ];
     vm.offset = "current";
 
+    vm.onlyMine = true
+
     // Compute start of period (day, week, month) from reference date,
     // typically now.
     //
@@ -211,11 +213,18 @@ app.controller('MainCtrl', function($http, $q) {
                 angular.forEach(worklogs, function(worklog, index) {
                     var ms = Date.parse(worklog.started);
                     var author = worklog.author.displayName;
-                    if (!vm.secondsByAuthor.hasOwnProperty(author)) {
-                        vm.secondsByAuthor[author] = 0;
-                    }
+                    
                     var start = new Date(ms);
-                    if (start >= sop && start < eop) {
+                    // If not limiting to my time or if this is my time
+                    // and the startof the log is within the time we want
+                    // process it.
+                    if ((!vm.onlyMine || worklog.author.name == vm.userId)
+                        && (start >= sop && start < eop)) {
+                        
+                        if (!vm.secondsByAuthor.hasOwnProperty(author)) {
+                            vm.secondsByAuthor[author] = 0;
+                        }
+                    
                         var secondsSpent = parseInt(worklog.timeSpentSeconds);
                         vm.secondsByAuthor[author] += secondsSpent;
                         vm.totalSeconds += secondsSpent;
