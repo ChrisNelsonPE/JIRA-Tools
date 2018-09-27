@@ -483,6 +483,7 @@ app.controller('MainCtrl', function($http, $q) {
                 g.setShowStartDate(0);
                 g.setShowEndDate(0);
                 g.setCaptionType('Complete');
+                g.setLinkStyle('simple');
                 
                 // The Gantt has some unfortunate defaults.  For some
                 // reason, passing an empty string here allows the

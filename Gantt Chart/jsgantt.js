@@ -788,7 +788,7 @@ JSGantt.GanttChart =  function(pGanttVar, pDiv, pFormat, pShowDep)
      };
     /**
      * Set link style to old (jsGantt) or standard
-     * @param pShow {String} "jsgantt"|"standard"
+     * @param pShow {String} "jsgantt"|"standard"|"simple"
      * @method setLinkStyle
      * @return {void}
      */ this.setLinkStyle  = function(pStyle) { vLinkStyle  = pStyle; };
@@ -2373,7 +2373,11 @@ JSGantt.taskLink = function(pRef,pFeatures,pStyle)
     }
 
     // Old JSGantt behavior
-    if (pStyle == "jsgantt") {
+    if (pStyle == "simple") {
+        vWinName = null;
+        vFeatures = null;
+    }
+    else if (pStyle == "jsgantt") {
         vWinName = "newwin";
     }
     else if (JSGantt.mouse["button"]=="MIDDLE" || JSGantt.mouse["shift"]) {
