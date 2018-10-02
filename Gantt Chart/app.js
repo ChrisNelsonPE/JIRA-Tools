@@ -93,6 +93,18 @@ app.controller('MainCtrl', function($http, $q) {
         var blocking = []; // Successors
         var parent = noParent; 
         var children = [];
+        
+        // Process Jira built-in subtasks
+        if (ticket.fields.parent) {
+            parent = parseInt(ticket.fields.parent.id);
+        }
+        
+        if (ticket.fields.subtasks) {
+            angular.forEach(ticket.fields.subtasks, function(subtask) {
+                children.push(parseInt(subtask.id));
+            });
+        }
+        
         // Process issue links to find adjacent tasks
         var links = ticket.fields.issuelinks;
         if (links) {
@@ -103,7 +115,29 @@ app.controller('MainCtrl', function($http, $q) {
                         blocks.push(parseInt(link.inwardIssue.id));
                     }
                     else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
-                        parent = parseInt(link.inwardIssue.id);
+                        var linkParent = parseInt(link.inwardIssue.id);
+                        // If parent hasn't been set yet, set it.
+                        if (parent == noParent) {
+                            parent = linkParent;
+                        }
+                        // If it has been set, log a message.
+                        else {
+                            // If there is a conflict, ignore the link.
+                            if (parent != linkParent) {
+                                console.log(ticket.key + " parent (" +
+                                            parent + ") conflicts with " +
+                                            link.type.inward + " value " +
+                                            linkParent + ". Ignoring " +
+                                            link.type.inward);
+                            }
+                            // If they are the same, there's nothing to do.
+                            else {
+                                console.log(ticket.key + " has both " +
+                                            "task/subtask relationship " +
+                                            "and " + link.type.inward +
+                                            "link.");
+                            }
+                        }
                     }
                     else {
                         console.log("Found another inward link type, '"
