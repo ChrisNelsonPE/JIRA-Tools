@@ -89,10 +89,10 @@ app.controller('MainCtrl', function($http, $q) {
     var noParent = 0;
 
     var taskDependencies = function(ticket) {
-        var blocks = [];   // Predecssors
-        var blocking = []; // Successors
+        var blocks = new Set([]);   // Predecssors
+        var blocking = new Set([]); // Successors
         var parent = noParent; 
-        var children = [];
+        var children = new Set([]);
         
         // Process Jira built-in subtasks
         if (ticket.fields.parent) {
@@ -101,7 +101,7 @@ app.controller('MainCtrl', function($http, $q) {
         
         if (ticket.fields.subtasks) {
             angular.forEach(ticket.fields.subtasks, function(subtask) {
-                children.push(parseInt(subtask.id));
+                children.add(parseInt(subtask.id));
             });
         }
         
@@ -112,7 +112,7 @@ app.controller('MainCtrl', function($http, $q) {
                 var link = links[i];
                 if (link.inwardIssue) {
                     if (link.type.inward == predecessorLinkText) {
-                        blocks.push(parseInt(link.inwardIssue.id));
+                        blocks.add(parseInt(link.inwardIssue.id));
                     }
                     else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
                         var linkParent = parseInt(link.inwardIssue.id);
@@ -147,10 +147,10 @@ app.controller('MainCtrl', function($http, $q) {
                 else if (link.outwardIssue) {
                     // This tests for the inward text to simplify config.
                     if (link.type.inward == predecessorLinkText) {
-                        blocking.push(parseInt(link.outwardIssue.id));
+                        blocking.add(parseInt(link.outwardIssue.id));
                     }
                     else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
-                        children.push(parseInt(link.outwardIssue.id));
+                        children.add(parseInt(link.outwardIssue.id));
                     }
                     else {
                         console.log("Found another outward link type, '"
@@ -177,11 +177,11 @@ app.controller('MainCtrl', function($http, $q) {
         var roots = Object.filter(tasks, task => task.parent == noParent);
         var queue = Object.keys(roots);
         while (queue.length != 0) {
-            // Get the key at the head of the queue
-            key = queue[0];
-            // Add this task's children to the front of the queue and
-            // remove the current key
-            queue = tasks[key].children.concat(queue.slice(1));
+            // Remove the key at the head of the queue
+            key = queue.shift()
+            // Add this task's children to the front of the queue
+            queue = Array.from(tasks[key].children).concat(queue);
+            // Execute the visitor function on the current task
             visitor(tasks, key);
         }
     };
@@ -245,7 +245,7 @@ app.controller('MainCtrl', function($http, $q) {
 
         // If there are children, ignore time from Jira, it will roll
         // up from children
-        if (task.children.length) {
+        if (task.children.size) {
             task.workedHours = 0;
             task.remainingHours = 0;
         }
@@ -278,7 +278,13 @@ app.controller('MainCtrl', function($http, $q) {
             // Filter each list of links for this task and keep only
             // those in the overall task list.
             angular.forEach(linkTypes, function(linkType) {
-                task[linkType] = task[linkType].filter(id => tasks[id])
+                var pruned = new Set([]);
+                task[linkType].forEach(function(id) {
+                    if (tasks[id]) {
+                        pruned.add(id);
+                    }
+                });
+                task[linkType] = pruned;
             });
         });
     };
@@ -286,7 +292,7 @@ app.controller('MainCtrl', function($http, $q) {
     // Decorate tasks to make schedling easier
     var preSchedule = function(tasks) {
         angular.forEach(tasks, function(task) {
-            task.preds = task.blocks.slice();
+            task.preds = new Set(task.blocks);
             task.end = 0;
             task.scheduled = false;
         });
@@ -295,6 +301,9 @@ app.controller('MainCtrl', function($http, $q) {
     // Remove artifacts from preSchedule
     var postSchedule = function(tasks) {
         angular.forEach(tasks, function(task) {
+            if (!task.scheduled) {
+                console.log("Task " + task.key + " not scheduled.");
+            }
             delete task.preds;
             delete task.scheduled;
         });
@@ -306,7 +315,7 @@ app.controller('MainCtrl', function($http, $q) {
         // scheduled and do not have any predecessors then return just
         // the values in that hash as an array.
         return Object.values(Object.filter(tasks, function(task) {
-            return !task.scheduled && task.preds.length == 0; 
+            return !task.scheduled && task.preds.size == 0; 
         }));
     };
 
@@ -416,7 +425,7 @@ app.controller('MainCtrl', function($http, $q) {
 
         // Update each successor to say this task no longer blocks
         angular.forEach(task.blocking, function(id) {
-            tasks[id].preds = tasks[id].preds.filter(p => p != task.id);
+            tasks[id].preds.delete(task.id);
         });
     };
 
@@ -445,7 +454,7 @@ app.controller('MainCtrl', function($http, $q) {
         var startString = new Date(task.start).toISOString().substring(0,10);
         var endString = new Date(task.end).toISOString().substring(0,10);
 
-        var hasChildren = task.children.length > 0;
+        var hasChildren = task.children.size > 0;
 
         var ganttTask = new JSGantt.TaskItem(chart,
                                              task.id,
@@ -460,7 +469,7 @@ app.controller('MainCtrl', function($http, $q) {
                                              hasChildren, // Group
                                              task.parent,
                                              hasChildren, // Open
-                                             task.blocks.join());
+                                             Array.from(task.blocks).join());
         chart.AddTaskItem(ganttTask);
     };
 
