@@ -296,6 +296,19 @@ app.controller('MainCtrl', function($http, $q) {
             task.end = 0;
             task.scheduled = false;
         });
+
+        // Parent priority influences the effective priority of children
+        wbsVisit(tasks, function(tasks, key) {
+            var task = tasks[key];
+            if (task.parent == noParent) {
+                task.effectivePriority = "";
+            }
+            else {
+                var parent = tasks[task.parent];
+                task.effectivePriority = parent.effectivePriority;
+            }
+            task.effectivePriority += task.priority;
+        });
     };
 
     // Remove artifacts from preSchedule
@@ -306,6 +319,7 @@ app.controller('MainCtrl', function($http, $q) {
             }
             delete task.preds;
             delete task.scheduled;
+            delete task.effectivePriority;
         });
     };
 
@@ -328,14 +342,20 @@ app.controller('MainCtrl', function($http, $q) {
         else if (t1.type > t2.type) {
             return 1;
         }
-        // Same type, check priority
-        else if (t1.priority < t2.priority) {
+        else if (t1.effectivePriority < t2.effectivePriority) {
             return -1;
         }
-        else if (t1.priority > t2.priority) {
+        else if (t1.effectivePriority > t2.effectivePriority) {
             return 1;
         }
-        // Same type and priority, compare ids
+        // Larger duration first
+        else if (t1.durationHours < t2.durationHours) {
+            return 1;
+        }
+        else if (t1.durationHours > t2.durationHours) {
+            return -1;
+        }
+        // Same type, priority and duration, compare ids
         // TODO - bigger first, more blocking first?
         else if (t1.id < t2.id) {
             return -1;
