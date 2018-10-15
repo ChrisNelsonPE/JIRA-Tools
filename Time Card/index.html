@@ -60,7 +60,7 @@
     </span>
     <div ng-repeat="(author, seconds) in vm.secondsByAuthor">
     <h2>{{author}} logged {{(seconds/3600.0).toFixed(2)}} hours</h2><br>
-    <table>
+    <table class="timeCard">
       <thead>
         <tr>
           <th>Ticket</th>
@@ -72,16 +72,16 @@
       </thead>
       <tbody ng-init="orderByField='started'">
         <tr ng-repeat="log in vm.work[author] |orderBy:orderByField">
-          <td>
+          <td class="ticketKey">
             <a href="{{log.ticketLink}}" 
                title="{{log.ticketSummary}}">
               {{log.key}}
             </a>
           </td>
-          <td>{{log.uiStart | date : 'EEE HH:mm'}}</td>
-          <td>{{log.uiEnd | date : 'HH:mm'}}</td>
-          <td>{{log.timeSpent}}</td>
-          <td>{{log.comment}}</td>
+          <td class="workStart">{{log.uiStart | date : 'EEE HH:mm'}}</td>
+          <td class="workEnd">{{log.uiEnd | date : 'HH:mm'}}</td>
+          <td class="workDuration">{{log.timeSpent}}</td>
+          <td class="workComment">{{log.comment}}</td>
         </tr>
       </tbody>
     </table>
