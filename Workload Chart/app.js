@@ -20,7 +20,7 @@ app.controller('MainCtrl', function($window, $http, $q) {
 
     // Your "active tickets" filter which has JQL like
     //   "sprint in openSprints()"
-    vm.filterNumber = "";
+    vm.queryText = "";
 
     // Your Jira user ID and password (optionaly cached in local storage)
     vm.userId = "";
@@ -33,9 +33,12 @@ app.controller('MainCtrl', function($window, $http, $q) {
         vm.domain = domain;
     }
 
-    var filter = localStorage.getItem(storageKey+".Filter");
-    if (filter != null) {
-        vm.filterNumber = filter;
+    vm.queryTypes = [ "filter", "epic", "JQL", "sprint" ];
+    vm.queryType = "filter";
+
+    var queryText = localStorage.getItem(storageKey+".Query");
+    if (queryText != null) {
+        vm.queryText = queryText;
     }
 
     // FUTURE - save these in local storage?
@@ -79,13 +82,13 @@ app.controller('MainCtrl', function($window, $http, $q) {
         if (vm.remember) {
             console.log("Setting local storage");
             localStorage.setItem(storageKey+".Domain", vm.domain);
-            localStorage.setItem(storageKey+".Filter", vm.filterNumber);
+            localStorage.setItem(storageKey+".Query", vm.queryText);
             localStorage.setItem(storageKey+".Cred", credential);
         }
         else {
             console.log("Clearing local storage");
             localStorage.removeItem(storageKey+".Domain");
-            localStorage.removeItem(storageKey+".Filter");
+            localStorage.removeItem(storageKey+".Query");
             localStorage.removeItem(storageKey+".Cred");
         }
         
@@ -94,7 +97,25 @@ app.controller('MainCtrl', function($window, $http, $q) {
         vm.workHours = [];
         assigneeIds = [];
         
-        getTickets()
+        vm.query;
+        switch (vm.queryType) {
+        case "filter":
+            // TODO - validate - we expect an integer
+            vm.query = "jql=filter=" + vm.queryText;
+            break;
+        case "epic":
+            vm.query = 'jql="Epic Link" = ' + vm.queryText;
+            break;
+        case "sprint":
+            // TODO - validate - we expect an integer
+            vm.query = "jql=sprint = " + vm.queryText;
+            break;
+        case "JQL":
+            vm.query = "jql=" + vm.queryText;
+            break;
+        }
+        
+        getTickets(vm.query)
             .then(function successCallback(tickets) {
                 var estimates = tickets.map(estimateFromTicket);
                                 
@@ -161,7 +182,7 @@ app.controller('MainCtrl', function($window, $http, $q) {
         // The base URL: matches filter for the chart
         // AND limited by assignee
         var url = "https://" + vm.domain + "/issues/"
-            + "?jql=filter=" + vm.filterNumber
+            + "?" + vm.query
             + " AND assignee";
 
         // Get the bar index
@@ -224,19 +245,15 @@ app.controller('MainCtrl', function($window, $http, $q) {
 
     // Returns a promise.  When that promise is satisfied, the data
     // passed back a list of tickets matching the Jira filter.
-    var getTickets = function(){
+    var getTickets = function(query){
         var deferred = $q.defer();
 
-        // If the API URL isn't yet defined, return an empty list.
-        if (vm.apiUrl == undefined) {
-            deferred.resolve([]);
-        }
+        var url = "https://" + vm.domain + "/rest/api/2/";
+        url += "search?" + query;
+        url += "&maxResults=1000";
         
         $http({
-            url: vm.apiUrl +
-                "search?jql=filter=" +
-                vm.filterNumber +
-                "&maxResults=1000",
+            url: url,
             method: "GET",
             headers: { "Authorization": "Basic " + credential }
         })
