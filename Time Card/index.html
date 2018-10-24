@@ -26,28 +26,34 @@
       <input type="password" ng-model="vm.password"/>
     </div>
     <div>
-      <input type="checkbox" ng-model="vm.remember">
-      <label>Remember me</label>
+      <input id="remember" type="checkbox" ng-model="vm.remember">
+      <label for="remember">Remember me</label>
     </div>
     <br>
     <div>
       <label>Offset:</label>
       <span ng-repeat="o in vm.offsets">
-        <input type="radio" name="offset" value="{{o}}" ng-model="vm.offset"/>
-        {{o}}
+        <input id="offset-{{o}}"
+               type="radio"
+               name="offset"
+               value="{{o}}" ng-model="vm.offset"/>
+        <label for="offset-{{o}}">{{o}}</label>
       </span>
     </div>
     <div>
       <label>Scale:</label>
       <span ng-repeat="s in vm.scales">
-        <input type="radio" name="scale" value="{{s}}" ng-model="vm.scale"/>
-        {{s}}
+        <input id="scale-{{s}}"
+               type="radio"
+               name="scale"
+               value="{{s}}" ng-model="vm.scale"/>
+        <label for="scale-{{s}}">{{s}}</label>
       </span>
     </div>
     <br>
     <div>
-      <input type="checkbox" ng-model="vm.onlyMine"/>
-      <label>Show only my time</label>
+      <input id="mine" type="checkbox" ng-model="vm.onlyMine"/>
+      <label for="mine">Show only my time</label>
     </div>
     <br>
     <button ng-click="vm.submit()">Get time</button><br>
