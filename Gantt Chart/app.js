@@ -20,7 +20,7 @@ app.controller('MainCtrl', function($http, $q) {
 
     // Your "active tickets" filter which has JQL like
     //   "sprint in openSprints()"
-    vm.filterNumber = "";
+    vm.queryText = "";
 
     // Your Jira user ID and password (optionaly cached in local storage)
     vm.userId = "";
@@ -33,9 +33,12 @@ app.controller('MainCtrl', function($http, $q) {
         vm.domain = domain;
     }
 
-    var filter = localStorage.getItem(storageKey+".Filter");
-    if (filter != null) {
-        vm.filterNumber = filter;
+    vm.queryTypes = [ "filter", "epic", "JQL" ];
+    vm.queryType = "filter";
+
+    var queryText = localStorage.getItem(storageKey+".Query");
+    if (queryText != null) {
+        vm.queryText = queryText;
     }
 
     // FUTURE - save these in local storage?
@@ -65,10 +68,20 @@ app.controller('MainCtrl', function($http, $q) {
             return "Unassigned";
         }
     };
-    
-    // TODO - get from type, resource, or something
-    var taskColor = function(ticket) {
-        return "Skyblue";
+
+    var colors = [
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "blue",
+        "indigo",
+        "violet"
+    ];
+
+    var taskColor = function(task) {
+        var index = resources.indexOf(task.resource);
+        return colors[index % colors.length];
     };
 
     var taskGetWork = function(ticket) {
@@ -84,6 +97,7 @@ app.controller('MainCtrl', function($http, $q) {
     // Update these to reflect local Jira config.
     var predecessorLinkText = "is blocked by";
     var parentLinkTexts = ["is a task in the story", "is a subtask of"];
+    var ignoredLinkTexts = ["relates to"];
 
     // An unused ID
     var noParent = 0;
@@ -125,8 +139,8 @@ app.controller('MainCtrl', function($http, $q) {
                             // If there is a conflict, ignore the link.
                             if (parent != linkParent) {
                                 console.log(ticket.key + " parent (" +
-                                            parent + ") conflicts with " +
-                                            link.type.inward + " value " +
+                                            parent + ") conflicts with '" +
+                                            link.type.inward + "' value " +
                                             linkParent + ". Ignoring " +
                                             link.type.inward);
                             }
@@ -139,7 +153,7 @@ app.controller('MainCtrl', function($http, $q) {
                             }
                         }
                     }
-                    else {
+                    else if (ignoredLinkTexts.indexOf(link.type.inward) == -1) {
                         console.log("Found another inward link type, '"
                                     + link.type.inward + "'");
                     }
@@ -152,9 +166,9 @@ app.controller('MainCtrl', function($http, $q) {
                     else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
                         children.add(parseInt(link.outwardIssue.id));
                     }
-                    else {
+                    else if (ignoredLinkTexts.indexOf(link.type.inward) == -1) {
                         console.log("Found another outward link type, '"
-                                    + link.type.inward + "'");
+                                    + link.type.outward + "'");
                     }
                 }
             }
@@ -218,6 +232,8 @@ app.controller('MainCtrl', function($http, $q) {
         return priority;
     };
 
+    var resources = [];
+
     var taskFromTicket = function(ticket) {
         var task = {};
         // Simple stuff
@@ -226,20 +242,21 @@ app.controller('MainCtrl', function($http, $q) {
         task.key = ticket.key;
 
         // ticket.self is an API link.
-        task.link = "https://" + vm.domain
-            + "/browse/"+ task.key
-            + "?filter="+ vm.filterNumber;
+        task.link = "https://" + vm.domain + "/browse/"+ task.key;
         
         task.milestone = false; // Don't have milestones in Jira
 
         // Some computed/dependent stuff
-        task.display = taskColor(ticket);
         task.type = taskType(ticket);
         task.priority = taskPriority(ticket);
         // FUTURE - Process status.  For example, we might prioritize
         // failed build over new development.
 
         task.resource = taskResource(ticket);
+        if (resources.indexOf(task.resource) == -1) {
+            resources.push(task.resource);
+        }
+        
         [task.blocks, task.parent, task.children, task.blocking] =
             taskDependencies(ticket);
 
@@ -387,6 +404,7 @@ app.controller('MainCtrl', function($http, $q) {
     };
 
     // FUTURE - this doesn't consider due dates
+    // FUTURE - this does ASAP, make generic for ALAP
     var scheduleOneTask = function(task, tasks) {
         // Get the next time available for this resource.
         // If the resource hasn't been used yet, start now.
@@ -481,7 +499,7 @@ app.controller('MainCtrl', function($http, $q) {
                                              task.name,
                                              hasChildren ? '' : startString,
                                              hasChildren ? '' : endString,
-                                             task.display,
+                                             taskColor(task),
                                              task.link,
                                              task.milestone,
                                              task.resource,
@@ -517,25 +535,38 @@ app.controller('MainCtrl', function($http, $q) {
     };
 
     vm.submit = function() {
-        vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
-
         credential = btoa(vm.userId + ":" + vm.password);
-        
+
+        // FIXME - save query type, per-type text?
         if (vm.remember) {
             console.log("Setting local storage");
             localStorage.setItem(storageKey+".Domain", vm.domain);
-            localStorage.setItem(storageKey+".Filter", vm.filterNumber);
+            localStorage.setItem(storageKey+".Query", vm.queryText);
             localStorage.setItem(storageKey+".Cred", credential);
         }
         else {
             console.log("Clearing local storage");
             localStorage.removeItem(storageKey+".Domain");
-            localStorage.removeItem(storageKey+".Filter");
+            localStorage.removeItem(storageKey+".Query");
             localStorage.removeItem(storageKey+".Cred");
         }
+
+        var query;
+        switch (vm.queryType) {
+        case "filter":
+            query = "search?jql=filter=" + vm.queryText;
+            break;
+        case "epic":
+            query = 'search?jql="Epic Link" = ' + vm.queryText;
+            break;
+        case "JQL":
+            query = "search?jql=" + vm.queryText;
+            break;
+        }
         
-        getTickets()
+        getTickets(query)
             .then(function successCallback(tickets) {
+                resources = []
                 var tasks = hashFromArray(tickets.map(taskFromTicket), "id");
 
                 // var here causes scoping problems, at least inside Angular.
@@ -570,7 +601,18 @@ app.controller('MainCtrl', function($http, $q) {
                 else {
                     addSampleTasks(g);
                 }
-                    
+
+                // Build the legend for resources.
+                if (resources.length > colors.length) {
+                    console.log("Too many resources for unique colors.");
+                }
+                var legend = {};
+                for (var i = 0; i < resources.length; ++i) {
+                    legend[resources[i]] = colors[i % colors.length];
+                }
+
+                g.setLegend(legend);
+                
                 g.Draw();        
                 g.DrawDependencies();
                 
@@ -611,19 +653,15 @@ app.controller('MainCtrl', function($http, $q) {
 
     // Returns a promise.  When that promise is satisfied, the data
     // passed back is a list of tickets which match the search criteria
-    var getTickets = function(){
+    var getTickets = function(query){
         var deferred = $q.defer();
 
-        // If the API URL isn't yet defined, return an empty list.
-        if (vm.apiUrl == undefined) {
-            deferred.resolve(estimates);
-        }
+        var url = "https://" + vm.domain + "/rest/api/2/";
+        url += query;
+        url += "&maxResults=1000";
         
         $http({
-            url: vm.apiUrl +
-                "search?jql=filter=" +
-                vm.filterNumber +
-                "&maxResults=1000",
+            url: url,
             method: "GET",
             headers: { "Authorization": "Basic " + credential }
         })

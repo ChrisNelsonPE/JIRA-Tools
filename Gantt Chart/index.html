@@ -16,8 +16,6 @@
     <div>
       <label>Jira Domain:</label>
       <input type="text" ng-model="vm.domain"/>
-      <label>Filter:</label>
-      <input type="text" ng-model="vm.filterNumber"/>
     </div>
     <br>
     <div>
@@ -32,6 +30,16 @@
     </div>
     <br>
     <div>
+      <label>Query type:</label>
+      <span ng-repeat="t in vm.queryTypes">
+        <input type="radio" name="query" value="{{t}}" ng-model="vm.queryType"/>
+        {{t}}
+      </span>
+      <br>
+      <input type="text" style="width:45em" ng-model="vm.queryText"/>
+    </div>
+    <br>
+    <div>
       <label>Default estimate:</label>
       <input type="number" ng-model="vm.defaultEstimateHours"/>
       hours
@@ -42,7 +50,7 @@
       hours per day
     </div>
     <br>
-    <button ng-click="vm.submit()">Get estimates</button><br>
+    <button ng-click="vm.submit()">Get tasks</button><br>
     <hr>
 
     <div style="position:relative" class="gantt" id="GanttChartDIV"></div>    

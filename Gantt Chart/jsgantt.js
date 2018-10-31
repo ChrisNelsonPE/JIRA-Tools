@@ -766,6 +766,7 @@ JSGantt.GanttChart =  function(pGanttVar, pDiv, pFormat, pShowDep)
 
     var vNumUnits  = 0;
     var vCaptionType;
+    var vLegend = {};
     var vDepId = 1;
     var vTaskList     = new Array();	
     var vFormatArr	= new Array("day","week","month","quarter");
@@ -872,6 +873,11 @@ JSGantt.GanttChart =  function(pGanttVar, pDiv, pFormat, pShowDep)
      * @method setCaptionType
      * @return {void}
      */  this.setCaptionType = function(pType) { vCaptionType = pType };
+    
+    this.setLegend = function(pLegend) {
+        vLegend = pLegend;
+    };
+    
     /**
      * Set current display format and redraw gantt chart (minute/hour/day/week/month/quarter)
      * @param pFormat {String} (mm/dd/yyyy,dd/mm/yyyy,yyyy-mm-dd)
@@ -881,6 +887,7 @@ JSGantt.GanttChart =  function(pGanttVar, pDiv, pFormat, pShowDep)
          vFormat = pFormat; 
          this.Draw(); 
      };
+
     /**
      * Returns whether resource column is shown
      * @method getShowRes
@@ -1223,6 +1230,16 @@ JSGantt.GanttChart =  function(pGanttVar, pDiv, pFormat, pShowDep)
             vDayWidth = (vColWidth / vColUnit) + (1/vColUnit);
 
             vMainTable = ''
+
+            if (vLegend != {}) {
+                var legend = "Legend: ";
+                Object.keys(vLegend).forEach(function(key) {
+                    legend += "<span class='legend' style='background:" + vLegend[key] + "'>&nbsp;" +
+                        key + "&nbsp;</span>&nbsp;";
+                });
+                vMainTable += "<div class='legend'>" + legend + "</div>";
+            }
+
 
             if (vShowRes == 1) { 
 	        vNameWidth -= vStatusWidth; 
@@ -1811,9 +1828,6 @@ JSGantt.GanttChart =  function(pGanttVar, pDiv, pFormat, pShowDep)
                             vRightTable += '<div style="FONT-SIZE:12px; position:absolute; top:-3px; width:120px; left:' + (Math.ceil((vTaskRight) * (vDayWidth) - 1) + 6) + 'px">' + vCaptionStr + '</div>';
 	                }
                         vRightTable += '</div>' ;
-
-                        
-
                     }
                 }
 
@@ -1821,7 +1835,7 @@ JSGantt.GanttChart =  function(pGanttVar, pDiv, pFormat, pShowDep)
 
             }
 
-            vMainTable += vRightTable + '</DIV></body></HTML>';
+            vMainTable += vRightTable;
 
 	    vDiv.innerHTML = vMainTable;
 
