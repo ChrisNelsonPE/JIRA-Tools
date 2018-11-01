@@ -118,7 +118,17 @@ app.controller('MainCtrl', function($http, $q) {
                 }
                 deferred.resolve(response.data.issues);
             }, function errorCallback(response) {
-                console.log("Error");
+                // CORS is handled by the client but we want to pass
+                // something back to the caller.
+                if (response.status == 0 && response.statusText == "") {
+                    response.status = 403;
+                    response.statusText =
+                        "Getting recent ticket data failed in a way" +
+                        " that suggests a CORS issue.  See the README" +
+                        " for notes about installing and configuring" +
+                        " the Allow-Control-Allow-Origin plugin.";
+                    alert(response.statusText);
+                }
                 deferred.reject(response);
             });
 
