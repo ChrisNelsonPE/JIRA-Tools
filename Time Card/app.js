@@ -19,7 +19,9 @@ app.controller('MainCtrl', function($http, $q) {
     vm.domain = ""
 
     // Your "recent tickets" filter which has JQL like
-    //   "worklogAuthor = currentUser() AND updated > -8h"
+    //   "worklogAuthor = currentUser()"
+    // or
+    //   "worklogAuthor in membersOf(myGroup)"
     vm.filterNumber = "";
 
     // Your Jira user ID and password (optionaly cached in local storage)
