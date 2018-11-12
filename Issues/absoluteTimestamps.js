@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jira absolute timestamps
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  Display absolute time instead of "10 minutes ago", "Yesterday", etc.
 // @author       Chris Nelson
 // @include      https://jira.automate.local/*
@@ -82,9 +82,12 @@
                 relative = "";
             }
 
-            e.innerHTML = absolute;
-            e.title = relative;
-            console.log("JAT: Updated " + e.nodeName + ":" + relative + " -> " + absolute);
+            if (absolute.length > 0) {
+                e.innerHTML = absolute;
+                e.title = relative;
+                console.log("JAT: Updated " + e.nodeName + ":" +
+                            relative + " -> " + absolute);
+            }
         }
         console.log("Done");
     }
