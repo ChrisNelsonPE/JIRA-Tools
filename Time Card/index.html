@@ -80,7 +80,8 @@
         <tr ng-repeat="log in vm.work[author] |orderBy:orderByField">
           <td class="ticketKey">
             <a href="{{log.ticketLink}}" 
-               title="{{log.ticketSummary}}">
+               title="{{log.ticketSummary}}"
+               target="_blank">
               {{log.key}}
             </a>
           </td>
