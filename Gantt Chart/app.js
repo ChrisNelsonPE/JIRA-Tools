@@ -591,7 +591,11 @@ app.controller('MainCtrl', function($http, $q) {
     };
 
     var getRemainingHours = function(ticket) {
-        if (!ticket.fields.timeestimate) {
+        // If the ticket is done, there is no remaining work.
+        if (ticket.fields.status.statusCategory.name == 'Done') {
+            return 0;
+        }
+        else if (!ticket.fields.timeestimate) {
             // If there is no estimate at all, default
             if (!ticket.fields.timeoriginalestimate) {
                 return vm.defaultEstimateHours;
