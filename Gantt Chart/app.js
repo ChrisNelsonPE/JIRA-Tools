@@ -18,6 +18,9 @@ app.controller('MainCtrl', function($http, $q) {
     // the code when building a request.
     vm.domain = ""
 
+    // FUTURE - this should be retrieved from the server
+    var epicLinkField = "customfield_10006";
+
     // Your "active tickets" filter which has JQL like
     //   "sprint in openSprints()"
     vm.filterNumber = "";
@@ -254,6 +257,8 @@ app.controller('MainCtrl', function($http, $q) {
         }
         task.durationHours = task.workedHours + task.remainingHours;
 
+        task.epic = ticket.fields[epicLinkField];
+
         return task;
     };
 
@@ -263,6 +268,23 @@ app.controller('MainCtrl', function($http, $q) {
             hash[arr[i][key]] = arr[i];
         }
         return hash;
+    };
+
+    // Look up epic keys to get IDs.  This has to be a post-processing step
+    // because tasks may not include the epic as task is first converted.
+    var resolveEpics = function(tasks) {
+        angular.forEach(tasks, function(task) {
+            // If the task has no parent but has an epic, try to find
+            // the id for the epic in the list of tasks.
+            if (task.parent == noParent && task.epic != "") {
+                angular.forEach(tasks, function(t) {
+                    if (t.key == task.epic) {
+                        task.parent = t.id;
+                        t.children.add(task.id);
+                    }
+                });
+            }
+        });
     };
 
     // Remove links to tasks that aren't in the list
@@ -536,8 +558,6 @@ app.controller('MainCtrl', function($http, $q) {
         
         getTickets()
             .then(function successCallback(tickets) {
-                var tasks = hashFromArray(tickets.map(taskFromTicket), "id");
-
                 // var here causes scoping problems, at least inside Angular.
                 g = new JSGantt.GanttChart('g',document.getElementById('GanttChartDIV'), 'day',1);
                 g.setShowRes(1); // Show/Hide Responsible (0/1)
@@ -554,6 +574,11 @@ app.controller('MainCtrl', function($http, $q) {
                 // scrollbars is cheap and harmless and lets the
                 // window open with browser/user defaults.
                 g.setPopupFeatures('scrollbars=1');
+
+                var tasks = hashFromArray(tickets.map(taskFromTicket), "id");
+
+                // Epic link is issue key.  We need ID
+                resolveEpics(tasks);
 
                 // Remove references to tasks not in the chart.
                 pruneLinks(tasks);
