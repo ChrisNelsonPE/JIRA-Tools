@@ -490,8 +490,16 @@ app.controller('MainCtrl', function($http, $q) {
     // order.
     var addTaskToChart = function(chart, task) {
 
-        var completionPercent = 100 * task.workedHours
-            / (task.workedHours + task.remainingHours);
+        var completionPercent;
+        // Handle tasks with no work and nothing remaining (e.g.,
+        // cancelled tasks).
+        if (task.workedHours == 0 && task.remainingHours == 0) {
+            completionPercent = 100;
+        }
+        else {
+            completionPercent = 100 * task.workedHours
+                / (task.workedHours + task.remainingHours);
+        }
 
         var startString = new Date(task.start).toISOString().substring(0,10);
         var endString = new Date(task.end).toISOString().substring(0,10);
