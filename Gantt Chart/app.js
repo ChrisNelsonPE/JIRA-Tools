@@ -437,7 +437,7 @@ app.controller('MainCtrl', function($http, $q) {
         // Move ahead from start until available hours by day
         // is enough to accomplish duration hours.
         var d = new Date(task.start);
-        var remainingHours = task.durationHours;
+        var remainingHours = task.remainingHours;
         while (remainingHours > 0) {
             var available = availableHours(d, task.resource);
             if (available >= remainingHours) {
