@@ -60,213 +60,29 @@ app.controller('MainCtrl', function($http, $q) {
         vm.remember = true;
     }
 
-    // An unused ID
-    var noParent = 0;
+    // ========================================================================
+    // Data used by parsing functions below.
+    // Update these to reflect local Jira config.
+    
+    var predecessorLinkText = "is blocked by";
+    var parentLinkTexts = ["is a task in the story", "is a subtask of"];
 
-    // Look up epic keys to get IDs.  This has to be a post-processing step
-    // because tasks may not include the epic as task is first converted.
-    var resolveEpics = function(tasks) {
-        angular.forEach(tasks, function(task) {
-            // If the task has no parent but has an epic, try to find
-            // the id for the epic in the list of tasks.
-            if (task.parent == noParent && task.epic != "") {
-                angular.forEach(tasks, function(t) {
-                    if (t.key == task.epic) {
-                        task.parent = t.id;
-                        t.children.add(task.id);
-                    }
-                });
-            }
-        });
+    var typeMap = {
+        "Bug" : 0,
+        "Task" : 1
     };
 
-    // Remove links to tasks that aren't in the list
-    var pruneLinks = function(tasks) {
-        var linkTypes = ["blocking", "blocks", "children"];
-        angular.forEach(tasks, function(task) {
-            // If parent is set but isn't in the list, remove it from
-            // the task.
-            if (task.parent != noParent && !tasks[task.parent]) {
-                task.parent = noParent;
-            }
-
-            // Filter each list of links for this task and keep only
-            // those in the overall task list.
-            angular.forEach(linkTypes, function(linkType) {
-                var pruned = new Set([]);
-                task[linkType].forEach(function(id) {
-                    if (tasks[id]) {
-                        pruned.add(id);
-                    }
-                });
-                task[linkType] = pruned;
-            });
-        });
+    var priorityMap = {
+        "Blocker" : 0,
+        "Critical" : 1,
+        "Major" : 2,
+        "Normal" : 3,
+        "Minor" : 4,
+        "Trivial" : 5
     };
 
-    // Decorate tasks to make schedling easier
-    var preSchedule = function(tasks) {
-        angular.forEach(tasks, function(task) {
-            task.preds = new Set(task.blocks);
-            task.end = 0;
-            task.scheduled = false;
-        });
-
-        // Parent priority influences the effective priority of children
-        wbsVisit(tasks, function(tasks, key) {
-            var task = tasks[key];
-            if (task.parent == noParent) {
-                task.effectivePriority = "";
-            }
-            else {
-                var parent = tasks[task.parent];
-                task.effectivePriority = parent.effectivePriority;
-            }
-            task.effectivePriority += task.priority;
-        });
-    };
-
-    // Remove artifacts from preSchedule
-    var postSchedule = function(tasks) {
-        angular.forEach(tasks, function(task) {
-            if (!task.scheduled) {
-                console.log("Task " + task.key + " not scheduled.");
-            }
-            delete task.preds;
-            delete task.scheduled;
-            delete task.effectivePriority;
-        });
-    };
-
-    // Return an array of eligible tasks
-    var findEligible = function(tasks) {
-        // Filter the input task hash to those that have not been
-        // scheduled and do not have any predecessors then return just
-        // the values in that hash as an array.
-        return Object.values(Object.filter(tasks, function(task) {
-            return !task.scheduled && task.preds.size == 0; 
-        }));
-    };
-
-    // For each resource, the next available time to work.
-    var nextByResource = {};
-
-    // FUTURE - a sophisticated implementation could check a calendar
-    // to see if the resource was unavailable due to PTO or something.
-    var availableHours = function(date, resource) {
-        // Skip weekends
-        if (date.getDay() == 6 || date.getDay() == 0) {
-            return 0;
-        }
-        // If we got passed a time that's after the end of the day,
-        // there are no more hours available.
-        if (date.getHours() > vm.availableHours) {
-            return 0;
-        }
-        return vm.availableHours - date.getHours();
-    };
-
-    // FUTURE - this doesn't consider due dates
-    var scheduleOneTask = function(task, tasks) {
-        // Get the next time available for this resource.
-        // If the resource hasn't been used yet, start now.
-        if (nextByResource[task.resource]) {
-            task.start = nextByResource[task.resource];
-        }
-        else {
-            var start = new Date(Date.now());
-            start.setHours(0);
-            start.setMinutes(0);
-            start.setSeconds(0);
-            // now() is local time since epoch in UTC.  Make it UTC.
-            start = new Date(start.getTime()
-                             - (start.getTimezoneOffset() * 60000));
-            task.start = start.getTime();
-        }
-
-        // This task can't start earlier than any of its predecessor's
-        // ends.
-        angular.forEach(task.blocks, function(id) {
-            if (tasks[id].end > task.start) {
-                task.start = tasks[id].end;
-            }
-        });
-
-        // Move ahead from start until available hours by day
-        // is enough to accomplish duration hours.
-        var d = new Date(task.start);
-        var remainingHours = task.remainingHours;
-        while (remainingHours > 0) {
-            var available = availableHours(d, task.resource);
-            if (available >= remainingHours) {
-                d.setHours(d.getHours() + remainingHours);
-                remainingHours = 0;
-            }
-            else {
-                remainingHours -= available;
-                d.setDate(d.getDate()+1);
-                d.setHours(0);
-            }
-        }
-        task.end = d.getTime();
-
-        // Propagate end up to parent(s);
-        for (var parentId = task.parent;
-             parentId != noParent;
-             parentId = tasks[parentId].parent) {
-            if (tasks[parentId].end < task.end) {
-                tasks[parentId].end = task.end;
-            }
-        }
-
-        nextByResource[task.resource] = task.end;
-        
-        task.scheduled = true;
-
-        // Update each successor to say this task no longer blocks
-        angular.forEach(task.blocking, function(id) {
-            tasks[id].preds.delete(task.id);
-        });
-    };
-
-    // Tasks is a hash
-    var scheduleTasks = function(tasks) {
-        nextByResource = {};
-        preSchedule(tasks);
-
-        for (var eligible = findEligible(tasks);
-             eligible.length != 0;
-             eligible = findEligible(tasks)) {
-            // Sort the eligible tasks by priority then schedule the first
-            scheduleOneTask(eligible.sort(compareTasks)[0], tasks)
-        }
-        
-        postSchedule(tasks);
-    };
-
-    Object.filter = (obj, predicate) => 
-        Object.keys(obj)
-          .filter( key => predicate(obj[key]) )
-          .reduce( (res, key) => (res[key] = obj[key], res), {} );
-
-    // Visit in WBS order (a Depth-first search).  Order is not
-    // considered at each level.
-    //
-    // tasks - a hash of tasks indexed by id.
-    // visitor - a function to be applied to each id in WBS order.
-    //   It is passed the hash and the key (id) to operate on.
-    var wbsVisit = function(tasks, visitor) {
-        var roots = Object.filter(tasks, task => task.parent == noParent);
-        var queue = Object.keys(roots);
-        while (queue.length != 0) {
-            // Remove the key at the head of the queue
-            key = queue.shift()
-            // Add this task's children to the front of the queue
-            queue = Array.from(tasks[key].children).concat(queue);
-            // Execute the visitor function on the current task
-            visitor(tasks, key);
-        }
-    };
+    
+    // These functions are helpers for parsing Jira issues into tasks
 
     var taskResource = function(issue) {
         if (issue.fields.assignee) {
@@ -282,6 +98,30 @@ app.controller('MainCtrl', function($http, $q) {
         return "Skyblue";
     };
 
+    // A helper for taskGetWork()
+    var getRemainingHours = function(issue) {
+        // If the issue is done, there is no remaining work.
+        if (issue.fields.status.statusCategory.name == 'Done') {
+            return 0;
+        }
+        else if (!issue.fields.timeestimate) {
+            // If there is no estimate at all, default
+            if (!issue.fields.timeoriginalestimate) {
+                return vm.defaultEstimateHours;
+            }
+            // There is no remaining estimate, but there is a current
+            // estimate, scale it from seconds to hours
+            else {
+                return issue.fields.timeoriginalestimate / 3600;
+            }
+        }
+        else {
+            // There is a remaining estimate, scale it from seconds to
+            // hours.
+            return issue.fields.timeestimate / 3600;
+        }
+    };
+
     var taskGetWork = function(issue) {
         var remainingHours = getRemainingHours(issue);
         var workedHours = 0;
@@ -292,21 +132,19 @@ app.controller('MainCtrl', function($http, $q) {
         return [workedHours, remainingHours];
     };
 
-    // Update these to reflect local Jira config.
-    var predecessorLinkText = "is blocked by";
-    var parentLinkTexts = ["is a task in the story", "is a subtask of"];
-
     var taskDependencies = function(issue) {
-        var blocks = new Set([]);   // Predecssors
+        var blocks = new Set([]);   // Predecessors
         var blocking = new Set([]); // Successors
-        var parent = noParent; 
+        var parent = taskLib.noParent; 
         var children = new Set([]);
         
         // Process Jira built-in subtasks
+        // Parent...
         if (issue.fields.parent) {
             parent = parseInt(issue.fields.parent.id);
         }
-        
+
+        // ... and subtask
         if (issue.fields.subtasks) {
             angular.forEach(issue.fields.subtasks, function(subtask) {
                 children.add(parseInt(subtask.id));
@@ -316,7 +154,7 @@ app.controller('MainCtrl', function($http, $q) {
         // Process issue links to find adjacent tasks
         var links = issue.fields.issuelinks;
         if (links) {
-            for (var i= 0; i < links.length; ++i) {
+            for (var i = 0; i < links.length; ++i) {
                 var link = links[i];
                 if (link.inwardIssue) {
                     if (link.type.inward == predecessorLinkText) {
@@ -325,7 +163,7 @@ app.controller('MainCtrl', function($http, $q) {
                     else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
                         var linkParent = parseInt(link.inwardIssue.id);
                         // If parent hasn't been set yet, set it.
-                        if (parent == noParent) {
+                        if (parent == taskLib.noParent) {
                             parent = linkParent;
                         }
                         // If it has been set, log a message.
@@ -371,76 +209,20 @@ app.controller('MainCtrl', function($http, $q) {
     };
 
     var taskType = function(issue) {
-        var typeValues = {
-            "Bug" : 0,
-            "Task" : 1
-        };
-
-        var type = typeValues[issue.fields.issuetype.name];
-        if (!type) {
-            type = 100;
-        }
-
-        return type;
+        return taskLib.buildSchedlingField(typeMap, issue.fields.issuetype.name);
     };
 
     var taskPriority = function(issue) {
-        var priorityValues = {
-            "Blocker" : 0,
-            "Critical" : 1,
-            "Major" : 2,
-            "Normal" : 3,
-            "Minor" : 4,
-            "Trivial" : 5
-        };
-
-        var priority = priorityValues[issue.fields.priority.name];
-        if (!priority) {
-            priority = 100;
-        }
-
-        return priority;
+        return taskLib.buildSchedulingField(priorityMap, issue.fields.priority.name);
     };
 
-    var getAssignee = function(issue) {
-        // If undefined, null, or empty, return Unassigned
-        if (!issue.fields.assignee) {
-            return "Unassigned";
-        }
-        else {
-            return issue.fields.assignee.displayName;
-        }
-    };
-
-    var getRemainingHours = function(issue) {
-        // If the issue is done, there is no remaining work.
-        if (issue.fields.status.statusCategory.name == 'Done') {
-            return 0;
-        }
-        else if (!issue.fields.timeestimate) {
-            // If there is no estimate at all, default
-            if (!issue.fields.timeoriginalestimate) {
-                return vm.defaultEstimateHours;
-            }
-            // There is no remaining estimate, but there is a current
-            // estimate, scale it from seconds to hours
-            else {
-                return issue.fields.timeoriginalestimate / 3600;
-            }
-        }
-        else {
-            // There is a remaining estimate, scale it from seconds to
-            // hours.
-            return issue.fields.timeestimate / 3600;
-        }
-    };
-
-    var taskFromIssue = function(issue) {
+    var taskFromJiraIssue = function(issue) {
         var task = {};
         // Simple stuff
         task.id = parseInt(issue.id);
         task.name = issue.key + ":" + issue.fields.summary;
         task.key = issue.key;
+        // TODO - status? Add to name?
 
         // issue.self is an API link.
         task.link = "https://" + vm.domain
@@ -471,6 +253,7 @@ app.controller('MainCtrl', function($http, $q) {
         }
         task.durationHours = task.workedHours + task.remainingHours;
 
+
         task.epic = issue.fields[epicLinkField];
 
         return task;
@@ -478,11 +261,12 @@ app.controller('MainCtrl', function($http, $q) {
 
     // Sort based on business rules.  Bug before improvements, high
     // priority before low, etc.
+    // FUTURE - can this be data driven?  Put in task lib?
     var compareTasks = function(t1, t2) {
-        if (t1.type < t2.type) {
+        if (t1.type.value < t2.type.value) {
             return -1;
         }
-        else if (t1.type > t2.type) {
+        else if (t1.type.value > t2.type.value) {
             return 1;
         }
         else if (t1.effectivePriority < t2.effectivePriority) {
@@ -491,6 +275,7 @@ app.controller('MainCtrl', function($http, $q) {
         else if (t1.effectivePriority > t2.effectivePriority) {
             return 1;
         }
+        // FIXME - Remaining?
         // Larger duration first
         else if (t1.durationHours < t2.durationHours) {
             return 1;
@@ -511,6 +296,8 @@ app.controller('MainCtrl', function($http, $q) {
         }
     };
 
+
+    // ========================================================================
     // Add a single task to the chart.  Should be passed tasks in WBS
     // order.
     var addTaskToChart = function(chart, task) {
@@ -618,18 +405,12 @@ app.controller('MainCtrl', function($http, $q) {
 
                 var tasks = hashFromArray(issues.map(taskFromIssue), "id");
 
-                // Epic link is issue key.  We need ID
-                resolveEpics(tasks);
-
-                // Remove references to tasks not in the chart.
-                pruneLinks(tasks);
-
-                scheduleTasks(tasks);
+                taskLib.scheduleTasks(tasks, compareTasks);
 
                 if (true) {
                     g.setDateInputFormat("yyyy-mm-dd"); // ISO
                     
-                    wbsVisit(tasks, function(tasks, key) {
+                    taskLib.wbsVisit(tasks, function(tasks, key) {
                         addTaskToChart(g, tasks[key]);
                     });
                 }
