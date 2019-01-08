@@ -21,7 +21,7 @@ app.controller('MainCtrl', function($http, $q) {
     // FUTURE - this should be retrieved from the server
     var epicLinkField = "customfield_10006";
 
-    // Your "active tickets" filter which has JQL like
+    // Your "active issues" filter which has JQL like
     //   "sprint in openSprints()"
     vm.filterNumber = "";
 
@@ -42,7 +42,7 @@ app.controller('MainCtrl', function($http, $q) {
     }
 
     // FUTURE - save these in local storage?
-    // Default estimate for unestimated tickets.  Better than 0 but
+    // Default estimate for unestimated issues.  Better than 0 but
     // not really experience-based.
     vm.defaultEstimateHours = 8;
 
@@ -60,9 +60,9 @@ app.controller('MainCtrl', function($http, $q) {
         vm.remember = true;
     }
 
-    var taskResource = function(ticket) {
-        if (ticket.fields.assignee) {
-            return ticket.fields.assignee.displayName;
+    var taskResource = function(issue) {
+        if (issue.fields.assignee) {
+            return issue.fields.assignee.displayName;
         }
         else {
             return "Unassigned";
@@ -70,15 +70,15 @@ app.controller('MainCtrl', function($http, $q) {
     };
     
     // TODO - get from type, resource, or something
-    var taskColor = function(ticket) {
+    var taskColor = function(issue) {
         return "Skyblue";
     };
 
-    var taskGetWork = function(ticket) {
-        var remainingHours = getRemainingHours(ticket);
+    var taskGetWork = function(issue) {
+        var remainingHours = getRemainingHours(issue);
         var workedHours = 0;
-        if (ticket.fields.timespent) {
-            workedHours = ticket.fields.timespent / 3600;
+        if (issue.fields.timespent) {
+            workedHours = issue.fields.timespent / 3600;
         }
         
         return [workedHours, remainingHours];
@@ -91,25 +91,25 @@ app.controller('MainCtrl', function($http, $q) {
     // An unused ID
     var noParent = 0;
 
-    var taskDependencies = function(ticket) {
+    var taskDependencies = function(issue) {
         var blocks = new Set([]);   // Predecssors
         var blocking = new Set([]); // Successors
         var parent = noParent; 
         var children = new Set([]);
         
         // Process Jira built-in subtasks
-        if (ticket.fields.parent) {
-            parent = parseInt(ticket.fields.parent.id);
+        if (issue.fields.parent) {
+            parent = parseInt(issue.fields.parent.id);
         }
         
-        if (ticket.fields.subtasks) {
-            angular.forEach(ticket.fields.subtasks, function(subtask) {
+        if (issue.fields.subtasks) {
+            angular.forEach(issue.fields.subtasks, function(subtask) {
                 children.add(parseInt(subtask.id));
             });
         }
         
         // Process issue links to find adjacent tasks
-        var links = ticket.fields.issuelinks;
+        var links = issue.fields.issuelinks;
         if (links) {
             for (var i= 0; i < links.length; ++i) {
                 var link = links[i];
@@ -127,7 +127,7 @@ app.controller('MainCtrl', function($http, $q) {
                         else {
                             // If there is a conflict, ignore the link.
                             if (parent != linkParent) {
-                                console.log(ticket.key + " parent (" +
+                                console.log(issue.key + " parent (" +
                                             parent + ") conflicts with " +
                                             link.type.inward + " value " +
                                             linkParent + ". Ignoring " +
@@ -135,7 +135,7 @@ app.controller('MainCtrl', function($http, $q) {
                             }
                             // If they are the same, there's nothing to do.
                             else {
-                                console.log(ticket.key + " has both " +
+                                console.log(issue.key + " has both " +
                                             "task/subtask relationship " +
                                             "and " + link.type.inward +
                                             "link.");
@@ -189,13 +189,13 @@ app.controller('MainCtrl', function($http, $q) {
         }
     };
 
-    var taskType = function(ticket) {
+    var taskType = function(issue) {
         var typeValues = {
             "Bug" : 0,
             "Task" : 1
         };
 
-        var type = typeValues[ticket.fields.issuetype.name];
+        var type = typeValues[issue.fields.issuetype.name];
         if (!type) {
             type = 100;
         }
@@ -203,7 +203,7 @@ app.controller('MainCtrl', function($http, $q) {
         return type;
     };
 
-    var taskPriority = function(ticket) {
+    var taskPriority = function(issue) {
         var priorityValues = {
             "Blocker" : 0,
             "Critical" : 1,
@@ -213,7 +213,7 @@ app.controller('MainCtrl', function($http, $q) {
             "Trivial" : 5
         };
 
-        var priority = priorityValues[ticket.fields.priority.name];
+        var priority = priorityValues[issue.fields.priority.name];
         if (!priority) {
             priority = 100;
         }
@@ -221,14 +221,14 @@ app.controller('MainCtrl', function($http, $q) {
         return priority;
     };
 
-    var taskFromTicket = function(ticket) {
+    var taskFromIssue = function(issue) {
         var task = {};
         // Simple stuff
-        task.id = parseInt(ticket.id);
-        task.name = ticket.key + ":" + ticket.fields.summary;
-        task.key = ticket.key;
+        task.id = parseInt(issue.id);
+        task.name = issue.key + ":" + issue.fields.summary;
+        task.key = issue.key;
 
-        // ticket.self is an API link.
+        // issue.self is an API link.
         task.link = "https://" + vm.domain
             + "/browse/"+ task.key
             + "?filter="+ vm.filterNumber;
@@ -236,15 +236,15 @@ app.controller('MainCtrl', function($http, $q) {
         task.milestone = false; // Don't have milestones in Jira
 
         // Some computed/dependent stuff
-        task.display = taskColor(ticket);
-        task.type = taskType(ticket);
-        task.priority = taskPriority(ticket);
+        task.display = taskColor(issue);
+        task.type = taskType(issue);
+        task.priority = taskPriority(issue);
         // FUTURE - Process status.  For example, we might prioritize
         // failed build over new development.
 
-        task.resource = taskResource(ticket);
+        task.resource = taskResource(issue);
         [task.blocks, task.parent, task.children, task.blocking] =
-            taskDependencies(ticket);
+            taskDependencies(issue);
 
         // If there are children, ignore time from Jira, it will roll
         // up from children
@@ -253,11 +253,11 @@ app.controller('MainCtrl', function($http, $q) {
             task.remainingHours = 0;
         }
         else {
-            [task.workedHours, task.remainingHours] = taskGetWork(ticket);
+            [task.workedHours, task.remainingHours] = taskGetWork(issue);
         }
         task.durationHours = task.workedHours + task.remainingHours;
 
-        task.epic = ticket.fields[epicLinkField];
+        task.epic = issue.fields[epicLinkField];
 
         return task;
     };
@@ -564,8 +564,8 @@ app.controller('MainCtrl', function($http, $q) {
             localStorage.removeItem(storageKey+".Cred");
         }
         
-        getTickets()
-            .then(function successCallback(tickets) {
+        getIssues()
+            .then(function successCallback(issues) {
                 // var here causes scoping problems, at least inside Angular.
                 g = new JSGantt.GanttChart('g',document.getElementById('GanttChartDIV'), 'day',1);
                 g.setShowRes(1); // Show/Hide Responsible (0/1)
@@ -583,7 +583,7 @@ app.controller('MainCtrl', function($http, $q) {
                 // window open with browser/user defaults.
                 g.setPopupFeatures('scrollbars=1');
 
-                var tasks = hashFromArray(tickets.map(taskFromTicket), "id");
+                var tasks = hashFromArray(issues.map(taskFromIssue), "id");
 
                 // Epic link is issue key.  We need ID
                 resolveEpics(tasks);
@@ -613,42 +613,42 @@ app.controller('MainCtrl', function($http, $q) {
         
     };
 
-    var getAssignee = function(ticket) {
+    var getAssignee = function(issue) {
         // If undefined, null, or empty, return Unassigned
-        if (!ticket.fields.assignee) {
+        if (!issue.fields.assignee) {
             return "Unassigned";
         }
         else {
-            return ticket.fields.assignee.displayName;
+            return issue.fields.assignee.displayName;
         }
     };
 
-    var getRemainingHours = function(ticket) {
-        // If the ticket is done, there is no remaining work.
-        if (ticket.fields.status.statusCategory.name == 'Done') {
+    var getRemainingHours = function(issue) {
+        // If the issue is done, there is no remaining work.
+        if (issue.fields.status.statusCategory.name == 'Done') {
             return 0;
         }
-        else if (!ticket.fields.timeestimate) {
+        else if (!issue.fields.timeestimate) {
             // If there is no estimate at all, default
-            if (!ticket.fields.timeoriginalestimate) {
+            if (!issue.fields.timeoriginalestimate) {
                 return vm.defaultEstimateHours;
             }
             // There is no remaining estimate, but there is a current
             // estimate, scale it from seconds to hours
             else {
-                return ticket.fields.timeoriginalestimate / 3600;
+                return issue.fields.timeoriginalestimate / 3600;
             }
         }
         else {
             // There is a remaining estimate, scale it from seconds to
             // hours.
-            return ticket.fields.timeestimate / 3600;
+            return issue.fields.timeestimate / 3600;
         }
     };
 
     // Returns a promise.  When that promise is satisfied, the data
-    // passed back is a list of tickets which match the search criteria
-    var getTickets = function(){
+    // passed back is a list of issues which match the search criteria
+    var getIssues = function(){
         var deferred = $q.defer();
 
         // If the API URL isn't yet defined, return an empty list.
@@ -666,7 +666,7 @@ app.controller('MainCtrl', function($http, $q) {
         })
             .then(function successCallback(response) {
                 if (response.data.total > response.data.maxResults) {
-                    alert("Not all tickets processed." +
+                    alert("Not all issues processed." +
                           " Got " + response.data.maxResults +
                           " out of " + response.data.total);
                 }
@@ -678,7 +678,7 @@ app.controller('MainCtrl', function($http, $q) {
                 if (response.status == 0 && response.statusText == "") {
                     response.status = 403;
                     response.statusText =
-                        "Getting recent ticket data failed in a way" +
+                        "Getting recent issue data failed in a way" +
                         " that suggests a CORS issue.  See the README" +
                         " for notes about installing and configuring" +
                         " the Allow-Control-Allow-Origin plugin.";
