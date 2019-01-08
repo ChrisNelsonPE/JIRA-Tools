@@ -253,10 +253,26 @@ app.controller('MainCtrl', function($http, $q) {
         }
         task.durationHours = task.workedHours + task.remainingHours;
 
-
         task.epic = issue.fields[epicLinkField];
 
         return task;
+    };
+
+    // Look up epic keys to get IDs.  This has to be a post-processing step
+    // because tasks may not include the epic as task is first converted.
+    var resolveEpics = function(tasks) {
+        angular.forEach(tasks, function(task) {
+            // If the task has no parent but has an epic, try to find
+            // the id for the epic in the list of tasks.
+            if (task.parent == taskLib.noParent && task.epic != "") {
+                angular.forEach(tasks, function(t) {
+                    if (t.key == task.epic) {
+                        task.parent = t.id;
+                        t.children.add(task.id);
+                    }
+                });
+            }
+        });
     };
 
     // Sort based on business rules.  Bug before improvements, high
@@ -405,6 +421,8 @@ app.controller('MainCtrl', function($http, $q) {
 
                 var tasks = hashFromArray(issues.map(taskFromJiraIssue), "id");
 
+                resolveEpics(tasks);
+                
                 taskLib.scheduleTasks(tasks, compareTasks);
 
                 if (true) {
