@@ -19,7 +19,9 @@
 // * timing (effort, all floating point number of hours)
 //   * remainingHours - hours the task should take to complete
 //   * workedHours - hours worked on the task so far
-//   * durationHours - workedHours + remainingHours
+// * Computed
+//   * start - numeric value for start date (from Data.getTime())
+//   * finish - numeric value for finish date
 //
 // The tasks parameter to many of these functions is a hash in the form:
 //
@@ -65,7 +67,7 @@ var taskLib = (function() {
     var preSchedule = function(tasks) {
         angular.forEach(tasks, function(task) {
             task.preds = new Set(task.blocks);
-            task.end = 0;
+            task.finish = 0;
             task.scheduled = false;
         });
 
@@ -146,8 +148,8 @@ var taskLib = (function() {
         // This task can't start earlier than any of its predecessor's
         // ends.
         angular.forEach(task.blocks, function(id) {
-            if (tasks[id].end > task.start) {
-                task.start = tasks[id].end;
+            if (tasks[id].finish > task.start) {
+                task.start = tasks[id].finish;
             }
         });
 
@@ -167,18 +169,18 @@ var taskLib = (function() {
                 d.setHours(0);
             }
         }
-        task.end = d.getTime();
+        task.finish = d.getTime();
 
         // Propagate end up to parent(s);
         for (var parentId = task.parent;
              parentId != taskLib.noParent;
              parentId = tasks[parentId].parent) {
-            if (tasks[parentId].end < task.end) {
-                tasks[parentId].end = task.end;
+            if (tasks[parentId].finish < task.finish) {
+                tasks[parentId].finish = task.finish;
             }
         }
 
-        nextByResource[task.resource] = task.end;
+        nextByResource[task.resource] = task.finish;
         
         task.scheduled = true;
 

@@ -314,7 +314,7 @@ app.controller('MainCtrl', function($http, $q) {
         }
 
         var startString = new Date(task.start).toISOString().substring(0,10);
-        var endString = new Date(task.end).toISOString().substring(0,10);
+        var finishString = new Date(task.finish).toISOString().substring(0,10);
 
         var hasChildren = task.children.size > 0;
 
@@ -322,7 +322,7 @@ app.controller('MainCtrl', function($http, $q) {
                                              task.id,
                                              task.name,
                                              hasChildren ? '' : startString,
-                                             hasChildren ? '' : endString,
+                                             hasChildren ? '' : finishString,
                                              task.display,
                                              task.link,
                                              task.milestone,
