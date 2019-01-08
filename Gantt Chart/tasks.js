@@ -192,20 +192,36 @@ var taskLib = (function() {
         // An unused ID
         noParent : 0,
 
-        // Visit task in WBS order (a depth-first search).  Order is not
-        // considered at each level.
+        // Visit task in WBS order (a depth-first search).
+        //
+        // At each level, tasks are sorted if a compare function is provided.
         //
         // tasks - a hash of tasks indexed by id.
+        //
         // visitor - a function to be applied to each id in WBS order.
         //   It is passed the hash and the key (id) to operate on.
-        wbsVisit : function(tasks, visitor) {
+        //
+        // compareTasks - (OPTIONAL) a function to compare order tasks
+        //   at each level
+        wbsVisit : function(tasks, visitor, compareTasks) {
+            var compareIds = function(id1, id2) {
+                if (typeof compareTasks === "function") {
+                    return compareTasks(tasks[id1], tasks[id2]);
+                }
+                else {
+                    return 0;
+                }
+            };
+
             var roots = Object.filter(tasks, task => task.parent == taskLib.noParent);
             var queue = Object.keys(roots);
             while (queue.length != 0) {
                 // Remove the key at the head of the queue
                 key = queue.shift()
                 // Add this task's children to the front of the queue
-                queue = Array.from(tasks[key].children).concat(queue);
+                queue = Array.from(tasks[key].children)
+                    .sort(compareIds)
+                    .concat(queue);
                 // Execute the visitor function on the current task
                 visitor(tasks, key);
             }
