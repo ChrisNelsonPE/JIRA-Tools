@@ -209,7 +209,7 @@ app.controller('MainCtrl', function($http, $q) {
     };
 
     var taskType = function(issue) {
-        return taskLib.buildSchedlingField(typeMap, issue.fields.issuetype.name);
+        return taskLib.buildSchedulingField(typeMap, issue.fields.issuetype.name);
     };
 
     var taskPriority = function(issue) {
@@ -403,7 +403,7 @@ app.controller('MainCtrl', function($http, $q) {
                 // window open with browser/user defaults.
                 g.setPopupFeatures('scrollbars=1');
 
-                var tasks = hashFromArray(issues.map(taskFromIssue), "id");
+                var tasks = hashFromArray(issues.map(taskFromJiraIssue), "id");
 
                 taskLib.scheduleTasks(tasks, compareTasks);
 
