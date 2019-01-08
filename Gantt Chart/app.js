@@ -60,215 +60,8 @@ app.controller('MainCtrl', function($http, $q) {
         vm.remember = true;
     }
 
-    var taskResource = function(issue) {
-        if (issue.fields.assignee) {
-            return issue.fields.assignee.displayName;
-        }
-        else {
-            return "Unassigned";
-        }
-    };
-    
-    // TODO - get from type, resource, or something
-    var taskColor = function(issue) {
-        return "Skyblue";
-    };
-
-    var taskGetWork = function(issue) {
-        var remainingHours = getRemainingHours(issue);
-        var workedHours = 0;
-        if (issue.fields.timespent) {
-            workedHours = issue.fields.timespent / 3600;
-        }
-        
-        return [workedHours, remainingHours];
-    };
-
-    // Update these to reflect local Jira config.
-    var predecessorLinkText = "is blocked by";
-    var parentLinkTexts = ["is a task in the story", "is a subtask of"];
-
     // An unused ID
     var noParent = 0;
-
-    var taskDependencies = function(issue) {
-        var blocks = new Set([]);   // Predecssors
-        var blocking = new Set([]); // Successors
-        var parent = noParent; 
-        var children = new Set([]);
-        
-        // Process Jira built-in subtasks
-        if (issue.fields.parent) {
-            parent = parseInt(issue.fields.parent.id);
-        }
-        
-        if (issue.fields.subtasks) {
-            angular.forEach(issue.fields.subtasks, function(subtask) {
-                children.add(parseInt(subtask.id));
-            });
-        }
-        
-        // Process issue links to find adjacent tasks
-        var links = issue.fields.issuelinks;
-        if (links) {
-            for (var i= 0; i < links.length; ++i) {
-                var link = links[i];
-                if (link.inwardIssue) {
-                    if (link.type.inward == predecessorLinkText) {
-                        blocks.add(parseInt(link.inwardIssue.id));
-                    }
-                    else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
-                        var linkParent = parseInt(link.inwardIssue.id);
-                        // If parent hasn't been set yet, set it.
-                        if (parent == noParent) {
-                            parent = linkParent;
-                        }
-                        // If it has been set, log a message.
-                        else {
-                            // If there is a conflict, ignore the link.
-                            if (parent != linkParent) {
-                                console.log(issue.key + " parent (" +
-                                            parent + ") conflicts with " +
-                                            link.type.inward + " value " +
-                                            linkParent + ". Ignoring " +
-                                            link.type.inward);
-                            }
-                            // If they are the same, there's nothing to do.
-                            else {
-                                console.log(issue.key + " has both " +
-                                            "task/subtask relationship " +
-                                            "and " + link.type.inward +
-                                            "link.");
-                            }
-                        }
-                    }
-                    else {
-                        console.log("Found another inward link type, '"
-                                    + link.type.inward + "'");
-                    }
-                }
-                else if (link.outwardIssue) {
-                    // This tests for the inward text to simplify config.
-                    if (link.type.inward == predecessorLinkText) {
-                        blocking.add(parseInt(link.outwardIssue.id));
-                    }
-                    else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
-                        children.add(parseInt(link.outwardIssue.id));
-                    }
-                    else {
-                        console.log("Found another outward link type, '"
-                                    + link.type.inward + "'");
-                    }
-                }
-            }
-        }
-        return [blocks, parent, children, blocking];
-    };
-
-    Object.filter = (obj, predicate) => 
-        Object.keys(obj)
-          .filter( key => predicate(obj[key]) )
-          .reduce( (res, key) => (res[key] = obj[key], res), {} );
-
-    // Visit in WBS order (a Depth-first search).  Order is not
-    // considered at each level.
-    //
-    // tasks - a hash of tasks indexed by id.
-    // visitor - a function to be applied to each id in WBS order.
-    //   It is passed the hash and the key (id) to operate on.
-    var wbsVisit = function(tasks, visitor) {
-        var roots = Object.filter(tasks, task => task.parent == noParent);
-        var queue = Object.keys(roots);
-        while (queue.length != 0) {
-            // Remove the key at the head of the queue
-            key = queue.shift()
-            // Add this task's children to the front of the queue
-            queue = Array.from(tasks[key].children).concat(queue);
-            // Execute the visitor function on the current task
-            visitor(tasks, key);
-        }
-    };
-
-    var taskType = function(issue) {
-        var typeValues = {
-            "Bug" : 0,
-            "Task" : 1
-        };
-
-        var type = typeValues[issue.fields.issuetype.name];
-        if (!type) {
-            type = 100;
-        }
-
-        return type;
-    };
-
-    var taskPriority = function(issue) {
-        var priorityValues = {
-            "Blocker" : 0,
-            "Critical" : 1,
-            "Major" : 2,
-            "Normal" : 3,
-            "Minor" : 4,
-            "Trivial" : 5
-        };
-
-        var priority = priorityValues[issue.fields.priority.name];
-        if (!priority) {
-            priority = 100;
-        }
-
-        return priority;
-    };
-
-    var taskFromIssue = function(issue) {
-        var task = {};
-        // Simple stuff
-        task.id = parseInt(issue.id);
-        task.name = issue.key + ":" + issue.fields.summary;
-        task.key = issue.key;
-
-        // issue.self is an API link.
-        task.link = "https://" + vm.domain
-            + "/browse/"+ task.key
-            + "?filter="+ vm.filterNumber;
-        
-        task.milestone = false; // Don't have milestones in Jira
-
-        // Some computed/dependent stuff
-        task.display = taskColor(issue);
-        task.type = taskType(issue);
-        task.priority = taskPriority(issue);
-        // FUTURE - Process status.  For example, we might prioritize
-        // failed build over new development.
-
-        task.resource = taskResource(issue);
-        [task.blocks, task.parent, task.children, task.blocking] =
-            taskDependencies(issue);
-
-        // If there are children, ignore time from Jira, it will roll
-        // up from children
-        if (task.children.size) {
-            task.workedHours = 0;
-            task.remainingHours = 0;
-        }
-        else {
-            [task.workedHours, task.remainingHours] = taskGetWork(issue);
-        }
-        task.durationHours = task.workedHours + task.remainingHours;
-
-        task.epic = issue.fields[epicLinkField];
-
-        return task;
-    };
-
-    var hashFromArray = function(arr, key) {
-        var hash = {};
-        for (var i = 0; i < arr.length; ++i) {
-            hash[arr[i][key]] = arr[i];
-        }
-        return hash;
-    };
 
     // Look up epic keys to get IDs.  This has to be a post-processing step
     // because tasks may not include the epic as task is first converted.
@@ -353,41 +146,6 @@ app.controller('MainCtrl', function($http, $q) {
         return Object.values(Object.filter(tasks, function(task) {
             return !task.scheduled && task.preds.size == 0; 
         }));
-    };
-
-    // Sort based on business rules.  Bug before improvements, high
-    // priority before low, etc.
-    var compareTasks = function(t1, t2) {
-        if (t1.type < t2.type) {
-            return -1;
-        }
-        else if (t1.type > t2.type) {
-            return 1;
-        }
-        else if (t1.effectivePriority < t2.effectivePriority) {
-            return -1;
-        }
-        else if (t1.effectivePriority > t2.effectivePriority) {
-            return 1;
-        }
-        // Larger duration first
-        else if (t1.durationHours < t2.durationHours) {
-            return 1;
-        }
-        else if (t1.durationHours > t2.durationHours) {
-            return -1;
-        }
-        // Same type, priority and duration, compare ids
-        // TODO - bigger first, more blocking first?
-        else if (t1.id < t2.id) {
-            return -1;
-        }
-        else if (t1.id > t2.id) {
-            return 1;
-        }
-        else {
-            return 0;
-        }
     };
 
     // For each resource, the next available time to work.
@@ -486,6 +244,273 @@ app.controller('MainCtrl', function($http, $q) {
         postSchedule(tasks);
     };
 
+    Object.filter = (obj, predicate) => 
+        Object.keys(obj)
+          .filter( key => predicate(obj[key]) )
+          .reduce( (res, key) => (res[key] = obj[key], res), {} );
+
+    // Visit in WBS order (a Depth-first search).  Order is not
+    // considered at each level.
+    //
+    // tasks - a hash of tasks indexed by id.
+    // visitor - a function to be applied to each id in WBS order.
+    //   It is passed the hash and the key (id) to operate on.
+    var wbsVisit = function(tasks, visitor) {
+        var roots = Object.filter(tasks, task => task.parent == noParent);
+        var queue = Object.keys(roots);
+        while (queue.length != 0) {
+            // Remove the key at the head of the queue
+            key = queue.shift()
+            // Add this task's children to the front of the queue
+            queue = Array.from(tasks[key].children).concat(queue);
+            // Execute the visitor function on the current task
+            visitor(tasks, key);
+        }
+    };
+
+    var taskResource = function(issue) {
+        if (issue.fields.assignee) {
+            return issue.fields.assignee.displayName;
+        }
+        else {
+            return "Unassigned";
+        }
+    };
+    
+    // TODO - get from type, resource, or something
+    var taskColor = function(issue) {
+        return "Skyblue";
+    };
+
+    var taskGetWork = function(issue) {
+        var remainingHours = getRemainingHours(issue);
+        var workedHours = 0;
+        if (issue.fields.timespent) {
+            workedHours = issue.fields.timespent / 3600;
+        }
+        
+        return [workedHours, remainingHours];
+    };
+
+    // Update these to reflect local Jira config.
+    var predecessorLinkText = "is blocked by";
+    var parentLinkTexts = ["is a task in the story", "is a subtask of"];
+
+    var taskDependencies = function(issue) {
+        var blocks = new Set([]);   // Predecssors
+        var blocking = new Set([]); // Successors
+        var parent = noParent; 
+        var children = new Set([]);
+        
+        // Process Jira built-in subtasks
+        if (issue.fields.parent) {
+            parent = parseInt(issue.fields.parent.id);
+        }
+        
+        if (issue.fields.subtasks) {
+            angular.forEach(issue.fields.subtasks, function(subtask) {
+                children.add(parseInt(subtask.id));
+            });
+        }
+        
+        // Process issue links to find adjacent tasks
+        var links = issue.fields.issuelinks;
+        if (links) {
+            for (var i= 0; i < links.length; ++i) {
+                var link = links[i];
+                if (link.inwardIssue) {
+                    if (link.type.inward == predecessorLinkText) {
+                        blocks.add(parseInt(link.inwardIssue.id));
+                    }
+                    else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
+                        var linkParent = parseInt(link.inwardIssue.id);
+                        // If parent hasn't been set yet, set it.
+                        if (parent == noParent) {
+                            parent = linkParent;
+                        }
+                        // If it has been set, log a message.
+                        else {
+                            // If there is a conflict, ignore the link.
+                            if (parent != linkParent) {
+                                console.log(issue.key + " parent (" +
+                                            parent + ") conflicts with " +
+                                            link.type.inward + " value " +
+                                            linkParent + ". Ignoring " +
+                                            link.type.inward);
+                            }
+                            // If they are the same, there's nothing to do.
+                            else {
+                                console.log(issue.key + " has both " +
+                                            "task/subtask relationship " +
+                                            "and " + link.type.inward +
+                                            "link.");
+                            }
+                        }
+                    }
+                    else {
+                        console.log("Found another inward link type, '"
+                                    + link.type.inward + "'");
+                    }
+                }
+                else if (link.outwardIssue) {
+                    // This tests for the inward text to simplify config.
+                    if (link.type.inward == predecessorLinkText) {
+                        blocking.add(parseInt(link.outwardIssue.id));
+                    }
+                    else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
+                        children.add(parseInt(link.outwardIssue.id));
+                    }
+                    else {
+                        console.log("Found another outward link type, '"
+                                    + link.type.inward + "'");
+                    }
+                }
+            }
+        }
+        return [blocks, parent, children, blocking];
+    };
+
+    var taskType = function(issue) {
+        var typeValues = {
+            "Bug" : 0,
+            "Task" : 1
+        };
+
+        var type = typeValues[issue.fields.issuetype.name];
+        if (!type) {
+            type = 100;
+        }
+
+        return type;
+    };
+
+    var taskPriority = function(issue) {
+        var priorityValues = {
+            "Blocker" : 0,
+            "Critical" : 1,
+            "Major" : 2,
+            "Normal" : 3,
+            "Minor" : 4,
+            "Trivial" : 5
+        };
+
+        var priority = priorityValues[issue.fields.priority.name];
+        if (!priority) {
+            priority = 100;
+        }
+
+        return priority;
+    };
+
+    var getAssignee = function(issue) {
+        // If undefined, null, or empty, return Unassigned
+        if (!issue.fields.assignee) {
+            return "Unassigned";
+        }
+        else {
+            return issue.fields.assignee.displayName;
+        }
+    };
+
+    var getRemainingHours = function(issue) {
+        // If the issue is done, there is no remaining work.
+        if (issue.fields.status.statusCategory.name == 'Done') {
+            return 0;
+        }
+        else if (!issue.fields.timeestimate) {
+            // If there is no estimate at all, default
+            if (!issue.fields.timeoriginalestimate) {
+                return vm.defaultEstimateHours;
+            }
+            // There is no remaining estimate, but there is a current
+            // estimate, scale it from seconds to hours
+            else {
+                return issue.fields.timeoriginalestimate / 3600;
+            }
+        }
+        else {
+            // There is a remaining estimate, scale it from seconds to
+            // hours.
+            return issue.fields.timeestimate / 3600;
+        }
+    };
+
+    var taskFromIssue = function(issue) {
+        var task = {};
+        // Simple stuff
+        task.id = parseInt(issue.id);
+        task.name = issue.key + ":" + issue.fields.summary;
+        task.key = issue.key;
+
+        // issue.self is an API link.
+        task.link = "https://" + vm.domain
+            + "/browse/"+ task.key
+            + "?filter="+ vm.filterNumber;
+        
+        task.milestone = false; // Don't have milestones in Jira
+
+        // Some computed/dependent stuff
+        task.display = taskColor(issue);
+        task.type = taskType(issue);
+        task.priority = taskPriority(issue);
+        // FUTURE - Process status.  For example, we might prioritize
+        // failed build over new development.
+
+        task.resource = taskResource(issue);
+        [task.blocks, task.parent, task.children, task.blocking] =
+            taskDependencies(issue);
+
+        // If there are children, ignore time from Jira, it will roll
+        // up from children
+        if (task.children.size) {
+            task.workedHours = 0;
+            task.remainingHours = 0;
+        }
+        else {
+            [task.workedHours, task.remainingHours] = taskGetWork(issue);
+        }
+        task.durationHours = task.workedHours + task.remainingHours;
+
+        task.epic = issue.fields[epicLinkField];
+
+        return task;
+    };
+
+    // Sort based on business rules.  Bug before improvements, high
+    // priority before low, etc.
+    var compareTasks = function(t1, t2) {
+        if (t1.type < t2.type) {
+            return -1;
+        }
+        else if (t1.type > t2.type) {
+            return 1;
+        }
+        else if (t1.effectivePriority < t2.effectivePriority) {
+            return -1;
+        }
+        else if (t1.effectivePriority > t2.effectivePriority) {
+            return 1;
+        }
+        // Larger duration first
+        else if (t1.durationHours < t2.durationHours) {
+            return 1;
+        }
+        else if (t1.durationHours > t2.durationHours) {
+            return -1;
+        }
+        // Same type, priority and duration, compare ids
+        // TODO - bigger first, more blocking first?
+        else if (t1.id < t2.id) {
+            return -1;
+        }
+        else if (t1.id > t2.id) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    };
+
     // Add a single task to the chart.  Should be passed tasks in WBS
     // order.
     var addTaskToChart = function(chart, task) {
@@ -544,6 +569,14 @@ app.controller('MainCtrl', function($http, $q) {
         g.AddTaskItem(new JSGantt.TaskItem(g,343, 'Draw Task Div',        '10/13/2008', '10/17/2008', '#ff0000', 'http://help.com', 0, 'Brian',    60, 0, 34, 1));
         g.AddTaskItem(new JSGantt.TaskItem(g,344, 'Draw Completion Div',  '10/17/2008', '11/04/2008', '#ff0000', 'http://help.com', 0, 'Brian',    60, 0, 34, 1,"342,343"));
         g.AddTaskItem(new JSGantt.TaskItem(g,35,  'Make Updates',         '12/17/2008','2/04/2009','#f600f6', 'http://help.com', 0, 'Brian',    30, 0, 3,  1));
+    };
+
+    var hashFromArray = function(arr, key) {
+        var hash = {};
+        for (var i = 0; i < arr.length; ++i) {
+            hash[arr[i][key]] = arr[i];
+        }
+        return hash;
     };
 
     vm.submit = function() {
@@ -611,39 +644,6 @@ app.controller('MainCtrl', function($http, $q) {
                 console.log(response);
             });
         
-    };
-
-    var getAssignee = function(issue) {
-        // If undefined, null, or empty, return Unassigned
-        if (!issue.fields.assignee) {
-            return "Unassigned";
-        }
-        else {
-            return issue.fields.assignee.displayName;
-        }
-    };
-
-    var getRemainingHours = function(issue) {
-        // If the issue is done, there is no remaining work.
-        if (issue.fields.status.statusCategory.name == 'Done') {
-            return 0;
-        }
-        else if (!issue.fields.timeestimate) {
-            // If there is no estimate at all, default
-            if (!issue.fields.timeoriginalestimate) {
-                return vm.defaultEstimateHours;
-            }
-            // There is no remaining estimate, but there is a current
-            // estimate, scale it from seconds to hours
-            else {
-                return issue.fields.timeoriginalestimate / 3600;
-            }
-        }
-        else {
-            // There is a remaining estimate, scale it from seconds to
-            // hours.
-            return issue.fields.timeestimate / 3600;
-        }
     };
 
     // Returns a promise.  When that promise is satisfied, the data
