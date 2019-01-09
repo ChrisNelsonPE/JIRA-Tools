@@ -3,10 +3,7 @@
 // A task has:
 // * id - a unique integer identifier
 // * name - a user-friendly string describing the task
-// * key - key for source (not used by task handling)
-// * link - optional URL for task details
 // * milestone - boolean indicating if the task is a milestone (zero-duration task)
-// * display - a color (name, (r,g,b), or hex)
 // * properties which may affect scheduling.  Each in the form { "display" : "xxx", "value" : 1 }?
 //   * type - "bug", "issue"
 //   * priority - "high", "low"
@@ -22,6 +19,8 @@
 // * Computed
 //   * start - numeric value for start date (from Data.getTime())
 //   * finish - numeric value for finish date
+//
+// Applications may put values in the hash "data" for their own purposes
 //
 // The tasks parameter to many of these functions is a hash in the form:
 //
@@ -89,7 +88,7 @@ var taskLib = (function() {
     var postSchedule = function(tasks) {
         angular.forEach(tasks, function(task) {
             if (!task.scheduled) {
-                console.log("Task " + task.key + " not scheduled.");
+                console.log("Task " + task.id + " not scheduled.");
             }
             delete task.preds;
             delete task.scheduled;
