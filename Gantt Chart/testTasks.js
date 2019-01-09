@@ -16,8 +16,6 @@ app.controller('MainCtrl', function($http, $q) {
     
     vm.defaultEstimateHours = 8;
 
-    vm.availableHours = 5;
-
     var typeMap = {
         "Bug" : 0,
         "Task" : 1
@@ -242,7 +240,7 @@ app.controller('MainCtrl', function($http, $q) {
     // window open with browser/user defaults.
     g.setPopupFeatures('scrollbars=1');
 
-    taskLib.scheduleTasks(tasks, prioritizeTasks);
+    taskLib.scheduleTasks(tasks, prioritizeTasks, { "hoursPerDay" : 5 });
 
     g.setDateInputFormat("yyyy-mm-dd"); // ISO
 

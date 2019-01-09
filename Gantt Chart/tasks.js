@@ -111,23 +111,22 @@ var taskLib = (function() {
 
     // FUTURE - a sophisticated implementation could check a calendar
     // to see if the resource was unavailable due to PTO or something.
-    // FIXME - need to pass in vm.availableHours
-    var availableHours = function(date, resource) {
+    var availableHours = function(date, resource, hoursPerDay) {
         // Skip weekends
         if (date.getDay() == 6 || date.getDay() == 0) {
             return 0;
         }
         // If we got passed a time that's after the end of the day,
         // there are no more hours available.
-        if (date.getHours() > vm.availableHours) {
+        if (date.getHours() > hoursPerDay) {
             return 0;
         }
-        return vm.availableHours - date.getHours();
+        return hoursPerDay - date.getHours();
     };
 
     // FUTURE - this doesn't consider due dates
     // FUTURE - this is ASAP.  Should generalize for ALAP/ASAP
-    var scheduleOneTask = function(task, tasks) {
+    var scheduleOneTask = function(task, tasks, constraints) {
         // Get the next time available for this resource.
         // If the resource hasn't been used yet, start now.
         if (nextByResource[task.resource]) {
@@ -157,7 +156,9 @@ var taskLib = (function() {
         var d = new Date(task.start);
         var remainingHours = task.remainingHours;
         while (remainingHours > 0) {
-            var available = availableHours(d, task.resource);
+            var available = availableHours(d,
+                                           task.resource,
+                                           constraints.hoursPerDay);
             if (available >= remainingHours) {
                 d.setHours(d.getHours() + remainingHours);
                 remainingHours = 0;
@@ -246,10 +247,16 @@ var taskLib = (function() {
             };
         },
 
-        // Tasks is a hash
+        // tasks is a hash
         // compareTasks is a function which compares two tasks and returns -1, 0, 1 in the usual way
-        scheduleTasks : function(tasks, compareTasks) {
+        // constraints is a hash of constraints:
+        //  * hoursPerDay
+        scheduleTasks : function(tasks, compareTasks, constraints = {}) {
             nextByResource = {};
+
+            if (!"hoursPerDay" in constraints) {
+                constraints["hoursPerDay"] = 8;
+            }
 
             // Remove references to tasks not in the chart.
             pruneLinks(tasks);
@@ -260,7 +267,9 @@ var taskLib = (function() {
                  eligible.length != 0;
                  eligible = findEligible(tasks)) {
                 // Sort the eligible tasks by priority then schedule the first
-                scheduleOneTask(eligible.sort(compareTasks)[0], tasks)
+                scheduleOneTask(eligible.sort(compareTasks)[0],
+                                tasks,
+                                constraints);
             }
             
             postSchedule(tasks);
