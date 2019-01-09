@@ -190,6 +190,18 @@ var taskLib = (function() {
         });
     };
 
+    var compareOneField = function(t1, t2, field) {
+        if (t1[field] < t2[field]) {
+            return -1;
+        }
+        else if (t1[field] > t2[field]) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    };
+
     return {
         // An unused ID
         noParent : 0,
@@ -229,6 +241,10 @@ var taskLib = (function() {
             }
         },
         
+        compareStart : function(t1, t2) {
+            return compareOneField(t1, t2, "start");
+        },
+
         // Helper to turn strings into numbers for comparing when scheduling.
         //
         // map is a hash like:

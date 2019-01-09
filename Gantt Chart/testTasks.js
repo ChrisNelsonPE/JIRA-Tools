@@ -244,21 +244,10 @@ app.controller('MainCtrl', function($http, $q) {
 
     g.setDateInputFormat("yyyy-mm-dd"); // ISO
 
-    var sortByStart = function(t1, t2) {
-        if (t1.start < t2.start) {
-            return -1;
-        }
-        else if (t1.start > t2.start) {
-            return 1;
-        }
-        else {
-            return 0;
-        }
-    };
     
     taskLib.wbsVisit(tasks, function(tasks, key) {
         addTaskToChart(g, tasks[key]);
-    }, sortByStart);
+    }, taskLib.compareStart);
     
     g.Draw();        
     g.DrawDependencies();
