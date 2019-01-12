@@ -62,12 +62,62 @@ var taskLib = (function() {
         });
     };
 
+    // Recursively build an array of ids of descendants of tasks[id]
+    //
+    // On return, all descendants of tasks[id] have task.desc set
+    var buildDesc = function(tasks, id) {
+        var task = tasks[id];
+        // A task is in its own "family" tree
+        task.desc = [ id ];
+        angular.forEach(task.children, function(cid) {
+            task.desc = task.desc.concat(buildDesc(tasks, cid));
+        });
+        return task.desc;
+    };
+
+    // buildDesc() must be called on all tasks before this.
+    var propagateDependencies = function(tasks, id) {
+        var parent = tasks[id];
+        var i;
+        var depFields = [ "preds", "succs" ];
+        for (i = 0; i < depFields.length; ++i) {
+            // Forward and reverse dependencies are opposite
+            var fwd = depFields[i];
+            var rev = fwd == depFields[0] ? depFields[1] : depFields[0];
+            angular.forEach(parent.children, function(cid) {
+                var child = tasks[cid];
+                // Cousins are descendants who are also dependents
+                var cousins = new Set(child.desc.filter(x => child[fwd].has(x)));
+                if (cousins.size == 0) {
+                    angular.forEach(parent[fwd], function(id) {
+                        if (!child[fwd].has(id)) {
+                            child[fwd].add(id);
+                            tasks[id][rev].add(cid);
+                        }
+                    });
+                }
+                propagateDependencies(tasks, cid);
+            });
+        }
+    };
+
     // Decorate tasks to make schedling easier
     var preSchedule = function(tasks) {
         angular.forEach(tasks, function(task) {
-            task.preds = new Set(task.blocks);
             task.finish = 0;
             task.scheduled = false;
+            task.preds = new Set(task.blocks);
+            task.succs = new Set(task.blocking);
+        });
+
+        var roots = Object.filter(tasks,
+                                  task => task.parent == taskLib.noParent);
+        angular.forEach(roots, function(root) {
+            buildDesc(tasks, root.id);
+        });
+
+        angular.forEach(roots, function(root) {
+            propagateDependencies(tasks, root.id);
         });
 
         // Parent priority influences the effective priority of children
@@ -81,6 +131,7 @@ var taskLib = (function() {
                 task.effectivePriority = parent.effectivePriority;
             }
             task.effectivePriority += task.priority.value;
+            task.nBlocking = task.preds.size;
         });
     };
 
@@ -89,10 +140,13 @@ var taskLib = (function() {
         angular.forEach(tasks, function(task) {
             if (!task.scheduled) {
                 console.log("Task " + task.id + " not scheduled.");
+                console.log(task);
             }
             delete task.preds;
+            delete task.succs;
             delete task.scheduled;
             delete task.effectivePriority;
+            delete task.nBlocking;
         });
     };
 
@@ -102,7 +156,7 @@ var taskLib = (function() {
         // scheduled and do not have any predecessors then return just
         // the values in that hash as an array.
         return Object.values(Object.filter(tasks, function(task) {
-            return !task.scheduled && task.preds.size == 0; 
+            return !task.scheduled && task.nBlocking == 0; 
         }));
     };
 
@@ -144,8 +198,8 @@ var taskLib = (function() {
         }
 
         // This task can't start earlier than any of its predecessor's
-        // ends.
-        angular.forEach(task.blocks, function(id) {
+        // finishes.
+        angular.forEach(task.preds, function(id) {
             if (tasks[id].finish > task.start) {
                 task.start = tasks[id].finish;
             }
@@ -171,23 +225,20 @@ var taskLib = (function() {
         }
         task.finish = d.getTime();
 
-        // Propagate end up to parent(s);
+        // Propagate end up to ancestors;
         for (var parentId = task.parent;
              parentId != taskLib.noParent;
              parentId = tasks[parentId].parent) {
+            if (typeof tasks[parentId].start === "undefined"
+                || tasks[parentId].start > task.start) {
+                tasks[parentId].start = task.start;
+            }
             if (tasks[parentId].finish < task.finish) {
                 tasks[parentId].finish = task.finish;
             }
         }
 
         nextByResource[task.resource] = task.finish;
-        
-        task.scheduled = true;
-
-        // Update each successor to say this task no longer blocks
-        angular.forEach(task.blocking, function(id) {
-            tasks[id].preds.delete(task.id);
-        });
     };
 
     var compareOneField = function(t1, t2, field) {
@@ -283,9 +334,26 @@ var taskLib = (function() {
                  eligible.length != 0;
                  eligible = findEligible(tasks)) {
                 // Sort the eligible tasks by priority then schedule the first
-                scheduleOneTask(eligible.sort(compareTasks)[0],
-                                tasks,
-                                constraints);
+                var toSchedule = eligible.sort(compareTasks)[0];
+
+                if (toSchedule.scheduled) {
+                    alert("Loop detected including task " + task.id + ".");
+                    return;
+                }
+
+                // Only schedule leafs (tasks with no children)
+                if (toSchedule.children.size == 0) {
+                    scheduleOneTask(toSchedule,
+                                    tasks,
+                                    constraints);
+                }
+
+                toSchedule.scheduled = true;
+
+                // Update each successor to say this task no longer blocks
+                angular.forEach(toSchedule.succs, function(id) {
+                    tasks[id].nBlocking--;
+                });
             }
             
             postSchedule(tasks);
