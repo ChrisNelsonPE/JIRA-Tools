@@ -230,14 +230,14 @@ var taskLib = (function() {
             var roots = Object.filter(tasks, task => task.parent == taskLib.noParent);
             var queue = Object.keys(roots);
             while (queue.length != 0) {
-                // Remove the key at the head of the queue
-                key = queue.shift()
+                // Remove the task id at the head of the queue
+                id = queue.shift();
                 // Add this task's children to the front of the queue
-                queue = Array.from(tasks[key].children)
+                queue = Array.from(tasks[id].children)
                     .sort(compareIds)
                     .concat(queue);
                 // Execute the visitor function on the current task
-                visitor(tasks, key);
+                visitor(tasks, id);
             }
         },
         
