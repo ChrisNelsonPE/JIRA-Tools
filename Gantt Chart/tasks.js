@@ -182,10 +182,15 @@ var taskLib = (function() {
     // FUTURE - this is ASAP.  Should generalize for ALAP/ASAP
     var scheduleOneTask = function(task, tasks, constraints) {
         // Get the next time available for this resource.
-        // If the resource hasn't been used yet, start now.
         if (nextByResource[task.resource]) {
             task.start = nextByResource[task.resource];
         }
+        // If the resource hasn't been used yet and there is a start date
+        // use that.
+        else if ("start" in constraints) {
+            task.start = constraints["start"];
+        }
+        // Otherwise, start at midnight today.
         else {
             var start = new Date(Date.now());
             start.setHours(0);
@@ -318,6 +323,7 @@ var taskLib = (function() {
         // compareTasks is a function which compares two tasks and returns -1, 0, 1 in the usual way
         // constraints is a hash of constraints:
         //  * hoursPerDay
+        //  * start - The start of the first task
         scheduleTasks : function(tasks, compareTasks, constraints = {}) {
             nextByResource = {};
 

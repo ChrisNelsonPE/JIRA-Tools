@@ -575,7 +575,11 @@ app.controller('MainCtrl', function($http, $q) {
     // window open with browser/user defaults.
     g.setPopupFeatures('scrollbars=1');
 
-    taskLib.scheduleTasks(tasks, prioritizeTasks, { "hoursPerDay" : 5 });
+    var constraints = {
+        "start" : new Date(2019,0,7,0,0,0).getTime(),
+        "hoursPerDay" : 5
+    };
+    taskLib.scheduleTasks(tasks, prioritizeTasks, constraints);
 
     g.setDateInputFormat("yyyy-mm-dd"); // ISO
 
