@@ -144,15 +144,17 @@ var taskLib = (function() {
     // Remove artifacts from added by preSchedule()
     var postSchedule = function(tasks) {
         angular.forEach(tasks, function(task) {
-            if (!task.scheduled) {
+            if (task.scheduled) {
+                delete task.preds;
+                delete task.succs;
+                delete task.scheduled;
+                delete task.effectivePriority;
+                delete task.nBlocking;
+            }
+            else {
                 console.log("Task " + task.id + " not scheduled.");
                 console.log(task);
             }
-            delete task.preds;
-            delete task.succs;
-            delete task.scheduled;
-            delete task.effectivePriority;
-            delete task.nBlocking;
         });
     };
 
