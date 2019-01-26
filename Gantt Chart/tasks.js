@@ -62,6 +62,12 @@ var taskLib = (function() {
         });
     };
 
+    var fillConstraints = function(constraints) {
+        if (!("hoursPerDay" in constraints)) {
+            constraints["hoursPerDay"] = 8;
+        }
+    };
+
     // Recursively build an array of ids of descendants of tasks[id]
     //
     // On return, all descendants of tasks[id] have task.desc set
@@ -327,9 +333,7 @@ var taskLib = (function() {
         scheduleTasks : function(tasks, compareTasks, constraints = {}) {
             nextByResource = {};
 
-            if (!"hoursPerDay" in constraints) {
-                constraints["hoursPerDay"] = 8;
-            }
+            fillConstraints(constraints);
 
             // Remove references to tasks not in the chart.
             pruneLinks(tasks);
