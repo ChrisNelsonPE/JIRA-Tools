@@ -9,8 +9,8 @@
 //   * priority - "high", "low"
 // * resource - a string (who or what executes the task)
 // * related tasks
-//   * blocks - set of ids of preceding tasks (empty if none)
-//   * blocking - set of ids of succeding tasks (empty if none)
+//   * after - set of ids of preceding tasks (empty if none)
+//   * before - set of ids of succeding tasks (empty if none)
 //   * parent - id of parent task (noParent, if none)
 //   * children - set of ids of child tasks (empty if none)
 // * timing (effort, all floating point number of hours)
@@ -40,7 +40,7 @@ if (typeof Object.filter !== "function") {
 var taskLib = (function() {
     // Remove links to tasks that aren't in the list
     var pruneLinks = function(tasks) {
-        var linkTypes = ["blocking", "blocks", "children"];
+        var linkTypes = ["before", "after", "children"];
         angular.forEach(tasks, function(task) {
             // If parent is set but isn't in the list, remove it from
             // the task.
@@ -112,8 +112,8 @@ var taskLib = (function() {
         angular.forEach(tasks, function(task) {
             task.finish = 0;
             task.scheduled = false;
-            task.preds = new Set(task.blocks);
-            task.succs = new Set(task.blocking);
+            task.preds = new Set(task["after"]);
+            task.succs = new Set(task["before"]);
         });
 
         var roots = Object.filter(tasks,
