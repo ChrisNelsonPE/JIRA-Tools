@@ -95,7 +95,7 @@ app.controller('MainCtrl', function($http, $q) {
                                              task.name,
                                              hasChildren ? '' : startString,
                                              hasChildren ? '' : finishString,
-                                             "Skyblue",
+                                             task.cp ? "Red" : "Skyblue",
                                              task.link,
                                              task.milestone,
                                              task.resource,

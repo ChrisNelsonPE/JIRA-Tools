@@ -457,6 +457,8 @@ var taskLib = (function() {
         //  * start - The start of the first task
         //  * finish - The finish of the last task
         //  * type - asap or alap
+        //  * cp - if present compute critical path, if array return
+        //    critical path
         scheduleTasks : function(tasks, compareTasks, constraints = {}) {
             nextByResource = {};
 
@@ -508,6 +510,43 @@ var taskLib = (function() {
             }
             
             postSchedule(tasks, constraints);
+
+            if ("cp" in constraints) {
+                var start = {};
+                var finish = {};
+                angular.forEach(tasks, function(task) {
+                    start[task.id] = task.start;
+                    delete task["start"];
+                    finish[task.id] = task.finish;
+                    delete task["finish"];
+                });
+
+                var cons = Object.assign({}, constraints);
+                delete cons["cp"];
+                if (constraints["type"] == "asap") {
+                    cons.type = "alap";
+                    cons.finish = constraints["finish"];
+                    delete cons["start"];
+                }
+                else {
+                    cons.type = "asap";
+                    cons.start = constraints["start"];
+                    delete cons["finish"];
+                }
+
+                taskLib.scheduleTasks(tasks, compareTasks, cons);
+
+                angular.forEach(tasks, function(task) {
+                    if (start[task.id] == task.start) {
+                        if (constraints["cp"] instanceof Array) {
+                            constraints["cp"].push(task.id);
+                        }
+                        task["cp"] = true;
+                    }
+                    task.start = start[task.id];
+                    task.finish = finish[task.id];
+                });
+            }
         }
     };
 })();
