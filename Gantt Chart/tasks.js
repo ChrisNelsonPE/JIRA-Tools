@@ -188,7 +188,21 @@ var taskLib = (function() {
     };
 
     // Remove artifacts from added by preSchedule()
-    var postSchedule = function(tasks) {
+    var postSchedule = function(tasks, constraints = {}) {
+        var to, from, dir;
+        if (constraints["type"] == "asap") {
+            from = "start";
+            to = "finish";
+            dir = 1;
+        }
+        else {
+            to = "start";
+            from = "finish";
+            dir = -1;
+        }
+
+        constraints[to] = dir * -864000000000000;
+
         angular.forEach(tasks, function(task) {
             if (task.scheduled) {
                 delete task.preds;
@@ -196,12 +210,20 @@ var taskLib = (function() {
                 delete task.scheduled;
                 delete task.effectivePriority;
                 delete task.nBlocking;
+
+                if (dir * task[to] > dir * constraints[to]) {
+                    constraints[to] = task[to];
+                }
             }
             else {
                 console.log("Task " + task.id + " not scheduled.");
                 console.log(task);
             }
         });
+
+        if (constraints[from] instanceof Date) {
+            constraints[to] = new Date(constraints[to]);
+        }
     };
 
     // Return an array of eligible tasks
@@ -485,7 +507,7 @@ var taskLib = (function() {
                 });
             }
             
-            postSchedule(tasks);
+            postSchedule(tasks, constraints);
         }
     };
 })();
