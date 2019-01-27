@@ -103,460 +103,509 @@ app.controller('MainCtrl', function($http, $q) {
                                              hasChildren, // Group
                                              task.parent,
                                              hasChildren, // Open
-                                             Array.from(task.blocks).join());
+                                             Array.from(task["after"]).join());
         chart.AddTaskItem(ganttTask);
     };
 
-    var tasks = {
-        10 : {
-            "id" : 10,
-            "name" : "Test 1 - Resource leveling",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 10",
-            "blocks" : [],            "blocking" : [],
-            "parent" : taskLib.noParent,  "children" : [11, 12],
-            "workedHours" : 10, "remainingHours" : 20
-        },
-        11 : {
-            "id" : 11,
-            "name" : "Task 2 - 1st by resource leveling",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 11",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : 10,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        12 : {
-            "id" : 12,
-            "name" : "Task 3 - 2nd by resource leveling",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 11",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : 10,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
 
-        20 : {
-            "id" : 20,
-            "name" : "Test 2 - Dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 20",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : taskLib.noParent,
-            "children" : [ 21, 22 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        21 : {
-            "id" : 21,
-            "name" : "Task 5 - 2nd by dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 21",
-            "blocks" : [ 22 ],
-            "blocking" : [],
-            "parent" : 20,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        22 : {
-            "id" : 22,
-            "name" : "Task 6 - 1st by dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 22",
-            "blocks" : [],
-            "blocking" : [ 21 ],
-            "parent" : 20,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-
-        30 : {
-            "id" : 30,
-            "name" : "Test 3 - Two blocking one",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 30",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : taskLib.noParent,
-            "children" : [ 31, 32, 33 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        31 : {
-            "id" : 31,
-            "name" : "Task 31 - 1st by ID",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 31",
-            "blocks" : [  ],
-            "blocking" : [ 33 ],
-            "parent" : 30,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        32 : {
-            "id" : 32,
-            "name" : "Task 32 - 2nd, start with task 31",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 32",
-            "blocks" : [  ],
-            "blocking" : [ 33 ],
-            "parent" : 30,
-            "children" : [],
-            "workedHours" : 5,
-            "remainingHours" : 10
-        },
-        33 : {
-            "id" : 33,
-            "name" : "Task 33 - 3rd by dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 33",
-            "blocks" : [ 31, 32 ],
-            "blocking" : [ ],
-            "parent" : 30,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-
-        40 : {
-            "id" : 40,
-            "name" : "Test 4 - One blocking two",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 40",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : taskLib.noParent,
-            "children" : [ 41, 42, 43 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        41 : {
-            "id" : 41,
-            "name" : "Task 41 - 1st by dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 41",
-            "blocks" : [  ],
-            "blocking" : [ 42, 43 ],
-            "parent" : 40,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        42 : {
-            "id" : 42,
-            "name" : "Task 42 - 2nd by ID",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 42",
-            "blocks" : [ 41 ],
-            "blocking" : [ ],
-            "parent" : 40,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        43 : {
-            "id" : 43,
-            "name" : "Task 43 - 3rd by ID",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 43",
-            "blocks" : [ 41  ],
-            "blocking" : [ ],
-            "parent" : 40,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-
-        50 : {
-            "id" : 50,
-            "name" : "Test 5 - Effective priority",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 50",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : taskLib.noParent,
-            "children" : [ 51, 53 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        51 : {
-            "id" : 51,
-            "name" : "Task 51 - Low-priority group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
-            "resource" : "Resource 51",
-            "blocks" : [  ],
-            "blocking" : [ ],
-            "parent" : 50,
-            "children" : [ 52 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        52 : {
-            "id" : 52,
-            "name" : "Task 52 - 2nd by effective priority",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 52",
-            "blocks" : [  ],
-            "blocking" : [ ],
-            "parent" : 51,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        53 : {
-            "id" : 53,
-            "name" : "Task 53 - High-priority group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
-            "resource" : "Resource 53",
-            "blocks" : [ ],
-            "blocking" : [ ],
-            "parent" : 50,
-            "children" : [ 54 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        54 : {
-            "id" : 54,
-            "name" : "Task 54 - 1st by effective priority",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 52",
-            "blocks" : [  ],
-            "blocking" : [ ],
-            "parent" : 53,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-
-        60 : {
-            "id" : 60,
-            "name" : "Test 6 - Group blocks group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 60",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : taskLib.noParent,
-            "children" : [ 61, 63 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        61 : {
-            "id" : 61,
-            "name" : "Task 61 - 2nd group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
-            "resource" : "Resource 61",
-            "blocks" : [ 63 ],
-            "blocking" : [ ],
-            "parent" : 60,
-            "children" : [ 62 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        62 : {
-            "id" : 62,
-            "name" : "Task 62 - 2nd by group blocking",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 62",
-            "blocks" : [  ],
-            "blocking" : [ ],
-            "parent" : 61,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        63 : {
-            "id" : 63,
-            "name" : "Task 63 1st group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
-            "resource" : "Resource 63",
-            "blocks" : [ ],
-            "blocking" : [ 61 ],
-            "parent" : 60,
-            "children" : [ 64 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        64 : {
-            "id" : 64,
-            "name" : "Task 64 - 1st by group blocking",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 64",
-            "blocks" : [  ],
-            "blocking" : [ ],
-            "parent" : 63,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-
-        70 : {
-            "id" : 70,
-            "name" : "Test 7 - Group blocks task",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 70",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : taskLib.noParent,
-            "children" : [ 71, 73 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        71 : {
-            "id" : 71,
-            "name" : "Task 71 - 2nd group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
-            "resource" : "Resource 71",
-            "blocks" : [  ],
-            "blocking" : [ ],
-            "parent" : 70,
-            "children" : [ 72 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        72 : {
-            "id" : 72,
-            "name" : "Task 72 - 2nd by dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 72",
-            "blocks" : [ 73 ],
-            "blocking" : [  ],
-            "parent" : 71,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        73 : {
-            "id" : 73,
-            "name" : "Task 73 1st group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
-            "resource" : "Resource 73",
-            "blocks" : [  ],
-            "blocking" : [ 72 ],
-            "parent" : 70,
-            "children" : [ 74 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        74 : {
-            "id" : 74,
-            "name" : "Task 74 - 1st by dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 74",
-            "blocks" : [  ],
-            "blocking" : [ ],
-            "parent" : 73,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-
-        80 : {
-            "id" : 80,
-            "name" : "Test 8 - Task blocks group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 80",
-            "blocks" : [],
-            "blocking" : [],
-            "parent" : taskLib.noParent,
-            "children" : [ 81, 83 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        81 : {
-            "id" : 81,
-            "name" : "Task 81 - 2nd group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
-            "resource" : "Resource 81",
-            "blocks" : [ 84 ],
-            "blocking" : [ ],
-            "parent" : 80,
-            "children" : [ 82 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        82 : {
-            "id" : 82,
-            "name" : "Task 82 - 2nd by dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 82",
-            "blocks" : [ ],
-            "blocking" : [  ],
-            "parent" : 81,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        83 : {
-            "id" : 83,
-            "name" : "Task 83 1st group",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
-            "resource" : "Resource 83",
-            "blocks" : [  ],
-            "blocking" : [ ],
-            "parent" : 80,
-            "children" : [ 84 ],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-        84 : {
-            "id" : 84,
-            "name" : "Task 84 - 1st by dependency",
-            "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-            "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
-            "resource" : "Resource 84",
-            "blocks" : [ ],
-            "blocking" : [ 81 ],
-            "parent" : 83,
-            "children" : [],
-            "workedHours" : 10,
-            "remainingHours" : 20
-        },
-
+    var addTestTasks = function(tasks, taskArray) {
+        for (var i = 0; i < taskArray.length; ++i) {
+            var task = taskArray[i];
+            tasks[task.id] = task;
+        }
     };
 
+    var addTest1 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 10,
+                "name" : "Test 1 - Resource leveling",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 10",
+                "after" : [],
+                "before": [],
+                "parent" : taskLib.noParent,  "children" : [11, 12],
+                "workedHours" : 10, "remainingHours" : 20
+            },
+            {
+                "id" : 11,
+                "name" : "Task 2 - 1st by resource leveling",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 11",
+                "after" : [],
+                "before" : [],
+                "parent" : 10,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 12,
+                "name" : "Task 3 - 2nd by resource leveling",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 11",
+                "after" : [],
+                "before" : [],
+                "parent" : 10,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            }
+        ]);
+    };
+
+    var addTest2 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 20,
+                "name" : "Test 2 - Dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 20",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 21, 22 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 21,
+                "name" : "Task 5 - 2nd by dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 21",
+                "after" : [ 22 ],
+                "before" : [ ],
+                "parent" : 20,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 22,
+                "name" : "Task 6 - 1st by dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 22",
+                "after" : [ ],
+                "before" : [ 21 ],
+                "parent" : 20,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            }
+        ]);
+    };
+
+    var addTest3 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 30,
+                "name" : "Test 3 - Two blocking one",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 30",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 31, 32, 33 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 31,
+                "name" : "Task 31 - 1st by ID",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 31",
+                "after" : [  ],
+                "before" : [ 33 ],
+                "parent" : 30,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 32,
+                "name" : "Task 32 - 2nd, start with task 31",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 32",
+                "after" : [  ],
+                "before" : [ 33 ],
+                "parent" : 30,
+                "children" : [],
+                "workedHours" : 5,
+                "remainingHours" : 10
+            },
+            {
+                "id" : 33,
+                "name" : "Task 33 - 3rd by dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 33",
+                "after" : [ 31, 32 ],
+                "before" : [ ],
+                "parent" : 30,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            }
+        ]);
+    };
+
+    var addTest4 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 40,
+                "name" : "Test 4 - One blocking two",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 40",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 41, 42, 43 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 41,
+                "name" : "Task 41 - 1st by dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 41",
+                "after" : [  ],
+                "before" : [ 42, 43 ],
+                "parent" : 40,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 42,
+                "name" : "Task 42 - 2nd by ID",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 42",
+                "after" : [ 41 ],
+                "before" : [ ],
+                "parent" : 40,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 43,
+                "name" : "Task 43 - 3rd by ID",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 43",
+                "after" : [ 41  ],
+                "before" : [ ],
+                "parent" : 40,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+        ]);
+    };
+
+    var addTest5 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 50,
+                "name" : "Test 5 - Effective priority",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 50",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 51, 53 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 51,
+                "name" : "Task 51 - Low-priority group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
+                "resource" : "Resource 51",
+                "after" : [  ],
+                "before" : [ ],
+                "parent" : 50,
+                "children" : [ 52 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 52,
+                "name" : "Task 52 - 2nd by effective priority",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 52",
+                "after" : [  ],
+                "before" : [ ],
+                "parent" : 51,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 53,
+                "name" : "Task 53 - High-priority group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
+                "resource" : "Resource 53",
+                "after" : [ ],
+                "before" : [ ],
+                "parent" : 50,
+                "children" : [ 54 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 54,
+                "name" : "Task 54 - 1st by effective priority",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 52",
+                "after" : [  ],
+                "before" : [ ],
+                "parent" : 53,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+        ]);
+    };
+
+    var addTest6 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 60,
+                "name" : "Test 6 - Group blocks group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 60",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 61, 63 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 61,
+                "name" : "Task 61 - 2nd group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
+                "resource" : "Resource 61",
+                "after" : [ 63 ],
+                "before" : [ ],
+                "parent" : 60,
+                "children" : [ 62 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 62,
+                "name" : "Task 62 - 2nd by group blocking",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 62",
+                "after" : [  ],
+                "before" : [ ],
+                "parent" : 61,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 63,
+                "name" : "Task 63 1st group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
+                "resource" : "Resource 63",
+                "after" : [ ],
+                "before" : [ 61 ],
+                "parent" : 60,
+                "children" : [ 64 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 64,
+                "name" : "Task 64 - 1st by group blocking",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 64",
+                "after" : [  ],
+                "before" : [ ],
+                "parent" : 63,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+        ]);
+    };
+
+    var addTest7 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 70,
+                "name" : "Test 7 - Group blocks task",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 70",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 71, 73 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 71,
+                "name" : "Task 71 - 2nd group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
+                "resource" : "Resource 71",
+                "after" : [  ],
+                "before" : [ ],
+                "parent" : 70,
+                "children" : [ 72 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 72,
+                "name" : "Task 72 - 2nd by dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 72",
+                "after" : [ 73 ],
+                "before" : [  ],
+                "parent" : 71,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 73,
+                "name" : "Task 73 1st group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
+                "resource" : "Resource 73",
+                "after" : [  ],
+                "before" : [ 72 ],
+                "parent" : 70,
+                "children" : [ 74 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 74,
+                "name" : "Task 74 - 1st by dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 74",
+                "after" : [  ],
+                "before" : [ ],
+                "parent" : 73,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+        ]);
+    };
+
+    var addTest8 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 80,
+                "name" : "Test 8 - Task blocks group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 80",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 81, 83 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 81,
+                "name" : "Task 81 - 2nd group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
+                "resource" : "Resource 81",
+                "after" : [ 84 ],
+                "before" : [ ],
+                "parent" : 80,
+                "children" : [ 82 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 82,
+                "name" : "Task 82 - 2nd by dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 82",
+                "after" : [ ],
+                "before" : [  ],
+                "parent" : 81,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 83,
+                "name" : "Task 83 1st group",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
+                "resource" : "Resource 83",
+                "after" : [  ],
+                "before" : [ ],
+                "parent" : 80,
+                "children" : [ 84 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 84,
+                "name" : "Task 84 - 1st by dependency",
+                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "resource" : "Resource 84",
+                "after" : [ ],
+                "before" : [ 81 ],
+                "parent" : 83,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+        ]);
+    };
+
+
+    var tasks = {};
+
+    addTest1(tasks);
+    addTest2(tasks);
+    addTest3(tasks);
+    addTest4(tasks);
+    addTest5(tasks);
+    addTest6(tasks);
+    addTest7(tasks);
+    addTest8(tasks);
 
     // var here causes scoping problems, at least inside Angular.
     g = new JSGantt.GanttChart('g',document.getElementById('GanttChartDIV'), 'day',1);
