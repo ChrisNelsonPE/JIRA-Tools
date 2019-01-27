@@ -576,13 +576,16 @@ app.controller('MainCtrl', function($http, $q) {
     g.setPopupFeatures('scrollbars=1');
 
     var constraints = {
-        "start" : new Date(2019,0,7,0,0,0).getTime(),
-        "hoursPerDay" : 5
+        "start" : new Date(2019,0,7),
+        "type" : "asap",
+//        "finish" : new Date(2019,0,25),
+//        "type" : "alap",
+        "hoursPerDay" : 5,
     };
+
     taskLib.scheduleTasks(tasks, prioritizeTasks, constraints);
 
     g.setDateInputFormat("yyyy-mm-dd"); // ISO
-
     
     taskLib.wbsVisit(tasks, function(tasks, key) {
         addTaskToChart(g, tasks[key]);

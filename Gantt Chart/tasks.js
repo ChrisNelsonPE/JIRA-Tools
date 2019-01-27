@@ -66,6 +66,34 @@ var taskLib = (function() {
         if (!("hoursPerDay" in constraints)) {
             constraints["hoursPerDay"] = 8;
         }
+
+        if (!("type" in constraints)) {
+            constraints["type"] = "asap";
+        }
+
+        var now = new Date(Date.now());
+        // now() is local time since epoch in UTC.  Make it UTC.
+        now = new Date(now.getTime()
+                       - (now.getTimezoneOffset() * 60000));
+
+        // ASAP schedule start now by default
+        if (constraints["type"] == "asap") {
+            if (!("start" in constraints)) {
+                constraints["start"] = now;
+            }
+            constraints["start"].setHours(0);
+            constraints["start"].setMinutes(0);
+            constraints["start"].setSeconds(0);
+        }
+        // ALAP schedules finish now by default
+        else {
+            if (!("finish" in constraints)) {
+                constraints["finish"] = now;
+            }
+            constraints["finish"].setHours(constraints["hoursPerDay"]);
+            constraints["finish"].setMinutes(0);
+            constraints["finish"].setSeconds(0);
+        }
     };
 
     // Recursively build an array of ids of descendants of tasks[id]
@@ -108,9 +136,16 @@ var taskLib = (function() {
     };
 
     // Decorate tasks to make schedling easier
-    var preSchedule = function(tasks) {
+    var preSchedule = function(tasks, constraints) {
         angular.forEach(tasks, function(task) {
-            task.finish = 0;
+            // Based on https://stackoverflow.com/questions/11526504
+            // Divide by 10 to be ~27k years, not 271k.
+            if (constraints["type"] == "asap") {
+                task.finish = -864000000000000;
+            }
+            else {
+                task.start = 864000000000000;
+            }
             task.scheduled = false;
             task.preds = new Set(task["after"]);
             task.succs = new Set(task["before"]);
@@ -137,7 +172,18 @@ var taskLib = (function() {
                 task.effectivePriority = parent.effectivePriority;
             }
             task.effectivePriority += task.priority.value;
-            task.nBlocking = task.preds.size;
+
+            // This seems backwards, but it's not.  nBlocking is how
+            // many tasks are blocking scheduling of this task.  For
+            // an ASAP schedule, a task is blocked by its
+            // predecessors.  For an ALAP schedule, it's blocked by
+            // its successors.
+            if (constraints["type"] == "asap") {
+                task.nBlocking = task.preds.size;
+            }
+            else {
+                task.nBlocking = task.succs.size;
+            }
         });
     };
 
@@ -173,85 +219,140 @@ var taskLib = (function() {
 
     // FUTURE - a sophisticated implementation could check a calendar
     // to see if the resource was unavailable due to PTO or something.
-    var availableHours = function(date, resource, hoursPerDay) {
+    var availableHours = function(date, resource, constraints) {
+        var hoursPerDay = constraints["hoursPerDay"];
+        var available;
+
         // Skip weekends
         if (date.getDay() == 6 || date.getDay() == 0) {
-            return 0;
+            available = 0;
         }
-        // If we got passed a time that's after the end of the day,
-        // there are no more hours available.
-        if (date.getHours() > hoursPerDay) {
-            return 0;
+        // ASAP - schedule from midnight to hoursPerDay
+        else if (constraints["type"] == "asap") {
+            // If we got passed a time that's after the end of the day,
+            // there are no more hours available.
+            if (date.getHours() > hoursPerDay) {
+                available = 0;
+            }
+            else {
+                available = hoursPerDay - date.getHours();
+            }
         }
-        return hoursPerDay - date.getHours();
+        // ALAP - schedule in hoursPerDay back to midnight
+        else {
+            if (date.getHours() > hoursPerDay) {
+                available = 0;
+            }
+            else {
+                available = date.getHours();
+            }
+        }
+        return available;
     };
 
     // FUTURE - this doesn't consider due dates
-    // FUTURE - this is ASAP.  Should generalize for ALAP/ASAP
     var scheduleOneTask = function(task, tasks, constraints) {
+        //console.log("Scheduling " + task.id);
+        var prev, next, from, to, dir;
+        // Forward
+        if (constraints["type"] == "asap") {
+            prev = "preds";
+            next = "succs";
+            from = "start";
+            to = "finish";
+            dir = 1;
+        }
+        else {
+            prev = "succs";
+            next = "preds";
+            from = "finish";
+            to = "start";
+            dir = -1;
+        }
+
         // Get the next time available for this resource.
         if (nextByResource[task.resource]) {
-            task.start = nextByResource[task.resource];
+            task[from] = nextByResource[task.resource];
         }
         // If the resource hasn't been used yet and there is a start date
         // use that.
-        else if ("start" in constraints) {
-            task.start = constraints["start"];
+        else if (from in constraints) {
+            if (constraints[from] instanceof Date) {
+                task[from] = constraints[from].getTime();
+            }
+            else {
+                task[from] = constraints[from];
+            }
         }
-        // Otherwise, start at midnight today.
         else {
-            var start = new Date(Date.now());
-            start.setHours(0);
-            start.setMinutes(0);
-            start.setSeconds(0);
-            // now() is local time since epoch in UTC.  Make it UTC.
-            start = new Date(start.getTime()
-                             - (start.getTimezoneOffset() * 60000));
-            task.start = start.getTime();
+            console.log("No " + from + " date specified.");
+            return;
         }
 
-        // This task can't start earlier than any of its predecessor's
-        // finishes.
-        angular.forEach(task.preds, function(id) {
-            if (tasks[id].finish > task.start) {
-                task.start = tasks[id].finish;
+        // ASAP: This task can't start earlier than any of its
+        // predecessor's finishes.
+        // ALAP: This task can't finish later than any of its
+        // successors's starts.
+        angular.forEach(task[prev], function(id) {
+            var t = dir * tasks[id][to];
+            var f = dir * task[from];
+
+            if (dir * tasks[id][to] > dir * task[from]) {
+                task[from] = tasks[id][to];
             }
         });
 
-        // Move ahead from start until available hours by day
-        // is enough to accomplish remaining hours.
-        var d = new Date(task.start);
+        var d = new Date(task[from]);
+
+
+        // Adjust end of day to start of next (ASAP) or start of day
+        // to end of previous (ALAP)
+        if (constraints["type"] == "asap") {
+            if (d.getHours() == constraints["hoursPerDay"]) {
+                d.setDate(d.getDate() + (dir * 1));
+                d.setHours(0);
+            }
+        }
+        else {
+            if (d.getHours() == 0) {
+                d.setDate(d.getDate() + (dir * 1));
+                d.setHours(constraints["hoursPerDay"]);
+            }
+        }
+        task[from] = d.getTime();
+
+        // Loop until available hours by day is enough to
+        // accomplish remaining hours.
         var remainingHours = task.remainingHours;
         while (remainingHours > 0) {
-            var available = availableHours(d,
-                                           task.resource,
-                                           constraints.hoursPerDay);
+            var available = availableHours(d, task.resource, constraints);
             if (available >= remainingHours) {
-                d.setHours(d.getHours() + remainingHours);
+                d.setHours(d.getHours() + (dir * remainingHours));
                 remainingHours = 0;
             }
             else {
                 remainingHours -= available;
-                d.setDate(d.getDate()+1);
-                d.setHours(0);
+                d.setDate(d.getDate() + (dir * 1));
+                d.setHours(dir == 1 ? 0 : constraints["hoursPerDay"]);
             }
         }
-        task.finish = d.getTime();
+        task[to] = d.getTime();
 
         // Propagate end up to ancestors;
         for (var parentId = task.parent;
              parentId != taskLib.noParent;
              parentId = tasks[parentId].parent) {
-            if (typeof tasks[parentId].start === "undefined"
-                || tasks[parentId].start > task.start) {
-                tasks[parentId].start = task.start;
+            if (typeof tasks[parentId][from] === "undefined"
+                || dir * tasks[parentId][from] > dir * task[from]) {
+                tasks[parentId][from] = task[from];
             }
-            if (tasks[parentId].finish < task.finish) {
-                tasks[parentId].finish = task.finish;
+            if (typeof tasks[parentId][to] === "undefined"
+                || dir * tasks[parentId][to] < dir * task[to]) {
+                tasks[parentId][to] = task[to];
             }
         }
 
-        nextByResource[task.resource] = task.finish;
+        nextByResource[task.resource] = task[to];
     };
 
     var compareOneField = function(t1, t2, field) {
@@ -332,6 +433,8 @@ var taskLib = (function() {
         // constraints is a hash of constraints:
         //  * hoursPerDay
         //  * start - The start of the first task
+        //  * finish - The finish of the last task
+        //  * type - asap or alap
         scheduleTasks : function(tasks, compareTasks, constraints = {}) {
             nextByResource = {};
 
@@ -340,13 +443,20 @@ var taskLib = (function() {
             // Remove references to tasks not in the chart.
             pruneLinks(tasks);
 
-            preSchedule(tasks);
+            preSchedule(tasks, constraints);
 
             for (var eligible = findEligible(tasks);
                  eligible.length != 0;
                  eligible = findEligible(tasks)) {
-                // Sort the eligible tasks by priority then schedule the first
-                var toSchedule = eligible.sort(compareTasks)[0];
+                // Sort the eligible tasks by priority then schedule the next
+                var next;
+                if (constraints["type"] == "asap") {
+                    next = 0;
+                }
+                else {
+                    next = eligible.length - 1;
+                }
+                var toSchedule = eligible.sort(compareTasks)[next];
 
                 if (toSchedule.scheduled) {
                     alert("Loop detected including task " + task.id + ".");
@@ -363,7 +473,14 @@ var taskLib = (function() {
                 toSchedule.scheduled = true;
 
                 // Update each successor to say this task no longer blocks
-                angular.forEach(toSchedule.succs, function(id) {
+                var f;
+                if (constraints["type"] == "asap") {
+                    f = "succs";
+                }
+                else {
+                    f = "preds";
+                }
+                angular.forEach(toSchedule[f], function(id) {
                     tasks[id].nBlocking--;
                 });
             }
