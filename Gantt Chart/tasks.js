@@ -542,6 +542,11 @@ var taskLib = (function() {
                             constraints["cp"].push(task.id);
                         }
                         task["cp"] = true;
+                        for (var parentId = task.parent;
+                             parentId != taskLib.noParent;
+                             parentId = tasks[parentId].parent) {
+                            tasks[parentId]["cp"] = true;
+                        }
                     }
                     task.start = start[task.id];
                     task.finish = finish[task.id];
