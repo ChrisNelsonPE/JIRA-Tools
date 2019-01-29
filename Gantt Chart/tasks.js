@@ -156,15 +156,20 @@ var taskLib = (function() {
         angular.forEach(tasks, function(task) {
             // Based on https://stackoverflow.com/questions/11526504
             // Divide by 10 to be ~27k years, not 271k.
+            task[c.to] = c.dir * -864000000000000;
+            task.scheduled = false;
+
+            // preds are the tasks which precede this one when
+            // scheduling. ALAP schedule goes finish to start to they
+            // are reversed.
             if (constraints["type"] == "asap") {
-                task.finish = -864000000000000;
+                task.preds = new Set(task["after"]);
+                task.succs = new Set(task["before"]);
             }
             else {
-                task.start = 864000000000000;
+                task.preds = new Set(task["before"]);
+                task.succs = new Set(task["after"]);
             }
-            task.scheduled = false;
-            task.preds = new Set(task["after"]);
-            task.succs = new Set(task["before"]);
         });
 
         var roots = Object.filter(tasks,
@@ -189,17 +194,7 @@ var taskLib = (function() {
             }
             task.effectivePriority += task.priority.value;
 
-            // This seems backwards, but it's not.  nBlocking is how
-            // many tasks are blocking scheduling of this task.  For
-            // an ASAP schedule, a task is blocked by its
-            // predecessors.  For an ALAP schedule, it's blocked by
-            // its successors.
-            if (constraints["type"] == "asap") {
-                task.nBlocking = task.preds.size;
-            }
-            else {
-                task.nBlocking = task.succs.size;
-            }
+            task.nBlocking = task.preds.size;
         });
     };
 
@@ -275,16 +270,6 @@ var taskLib = (function() {
     var scheduleOneTask = function(task, tasks, constraints) {
         //console.log("Scheduling " + task.id);
         var c = constraints;
-        var prev, next;
-        // Forward
-        if (constraints["type"] == "asap") {
-            prev = "preds";
-            next = "succs";
-        }
-        else {
-            prev = "succs";
-            next = "preds";
-        }
 
         // Get the next time available for this resource.
         if (nextByResource[task.resource]) {
@@ -309,7 +294,7 @@ var taskLib = (function() {
         // predecessor's finishes.
         // ALAP: This task can't finish later than any of its
         // successors's starts.
-        angular.forEach(task[prev], function(id) {
+        angular.forEach(task["preds"], function(id) {
             if (c.dir * tasks[id][c.to] > c.dir * task[c.from]) {
                 task[c.from] = tasks[id][c.to];
             }
@@ -480,14 +465,7 @@ var taskLib = (function() {
                 toSchedule.scheduled = true;
 
                 // Update each successor to say this task no longer blocks
-                var f;
-                if (constraints["type"] == "asap") {
-                    f = "succs";
-                }
-                else {
-                    f = "preds";
-                }
-                angular.forEach(toSchedule[f], function(id) {
+                angular.forEach(toSchedule["succs"], function(id) {
                     tasks[id].nBlocking--;
                 });
             }
