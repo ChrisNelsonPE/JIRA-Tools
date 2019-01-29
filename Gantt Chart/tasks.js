@@ -142,11 +142,15 @@ var taskLib = (function() {
             c.from = "start";
             c.to = "finish";
             c.dir = 1;
+            c.sod = 0;                           // Start of day
+            c.eod = constraints["hoursPerDay"];  // End of day
         }
         else {
-            c.to = "start";
             c.from = "finish";
+            c.to = "start";
             c.dir = -1;
+            c.sod = constraints["hoursPerDay"];
+            c.eod = 0;
         }
 
         angular.forEach(tasks, function(task) {
@@ -247,6 +251,7 @@ var taskLib = (function() {
     // FUTURE - a sophisticated implementation could check a calendar
     // to see if the resource was unavailable due to PTO or something.
     var availableHours = function(date, resource, constraints) {
+        var c = constraints;
         var hoursPerDay = constraints["hoursPerDay"];
         var available;
 
@@ -254,24 +259,13 @@ var taskLib = (function() {
         if (date.getDay() == 6 || date.getDay() == 0) {
             available = 0;
         }
-        // ASAP - schedule from midnight to hoursPerDay
-        else if (constraints["type"] == "asap") {
-            // If we got passed a time that's after the end of the day,
-            // there are no more hours available.
-            if (date.getHours() > hoursPerDay) {
-                available = 0;
-            }
-            else {
-                available = hoursPerDay - date.getHours();
-            }
-        }
-        // ALAP - schedule in hoursPerDay back to midnight
         else {
+            // Outside working hours, no time available
             if (date.getHours() > hoursPerDay) {
                 available = 0;
             }
             else {
-                available = date.getHours();
+                available = c.dir * (c.eod - date.getHours());
             }
         }
         return available;
@@ -323,21 +317,13 @@ var taskLib = (function() {
 
         var d = new Date(task[c.from]);
 
-
         // Adjust end of day to start of next (ASAP) or start of day
         // to end of previous (ALAP)
-        if (constraints["type"] == "asap") {
-            if (d.getHours() == constraints["hoursPerDay"]) {
-                d.setDate(d.getDate() + (c.dir * 1));
-                d.setHours(0);
-            }
+        if (d.getHours() == c.eod) {
+            d.setDate(d.getDate() + (c.dir * 1));
+            d.setHours(c.sod);
         }
-        else {
-            if (d.getHours() == 0) {
-                d.setDate(d.getDate() + (c.dir * 1));
-                d.setHours(constraints["hoursPerDay"]);
-            }
-        }
+
         task[c.from] = d.getTime();
 
         // Loop until available hours by day is enough to
