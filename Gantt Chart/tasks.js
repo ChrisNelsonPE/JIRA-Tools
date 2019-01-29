@@ -137,6 +137,18 @@ var taskLib = (function() {
 
     // Decorate tasks to make schedling easier
     var preSchedule = function(tasks, constraints) {
+        var c = constraints;
+        if (c["type"] == "asap") {
+            c.from = "start";
+            c.to = "finish";
+            c.dir = 1;
+        }
+        else {
+            c.to = "start";
+            c.from = "finish";
+            c.dir = -1;
+        }
+
         angular.forEach(tasks, function(task) {
             // Based on https://stackoverflow.com/questions/11526504
             // Divide by 10 to be ~27k years, not 271k.
@@ -188,20 +200,9 @@ var taskLib = (function() {
     };
 
     // Remove artifacts from added by preSchedule()
-    var postSchedule = function(tasks, constraints = {}) {
-        var to, from, dir;
-        if (constraints["type"] == "asap") {
-            from = "start";
-            to = "finish";
-            dir = 1;
-        }
-        else {
-            to = "start";
-            from = "finish";
-            dir = -1;
-        }
-
-        constraints[to] = dir * -864000000000000;
+    var postSchedule = function(tasks, constraints) {
+        var c = constraints;
+        constraints[c.to] = c.dir * -864000000000000;
 
         angular.forEach(tasks, function(task) {
             if (task.scheduled) {
@@ -211,8 +212,8 @@ var taskLib = (function() {
                 delete task.effectivePriority;
                 delete task.nBlocking;
 
-                if (dir * task[to] > dir * constraints[to]) {
-                    constraints[to] = task[to];
+                if (c.dir * task[c.to] > c.dir * constraints[c.to]) {
+                    constraints[c.to] = task[c.to];
                 }
             }
             else {
@@ -221,9 +222,13 @@ var taskLib = (function() {
             }
         });
 
-        if (constraints[from] instanceof Date) {
-            constraints[to] = new Date(constraints[to]);
+        if (constraints[c.from] instanceof Date) {
+            constraints[c.to] = new Date(constraints[c.to]);
         }
+
+        delete c.to
+        delete c.from
+        delete c.dir
     };
 
     // Return an array of eligible tasks
@@ -275,39 +280,34 @@ var taskLib = (function() {
     // FUTURE - this doesn't consider due dates
     var scheduleOneTask = function(task, tasks, constraints) {
         //console.log("Scheduling " + task.id);
-        var prev, next, from, to, dir;
+        var c = constraints;
+        var prev, next;
         // Forward
         if (constraints["type"] == "asap") {
             prev = "preds";
             next = "succs";
-            from = "start";
-            to = "finish";
-            dir = 1;
         }
         else {
             prev = "succs";
             next = "preds";
-            from = "finish";
-            to = "start";
-            dir = -1;
         }
 
         // Get the next time available for this resource.
         if (nextByResource[task.resource]) {
-            task[from] = nextByResource[task.resource];
+            task[c.from] = nextByResource[task.resource];
         }
         // If the resource hasn't been used yet and there is a start date
         // use that.
-        else if (from in constraints) {
-            if (constraints[from] instanceof Date) {
-                task[from] = constraints[from].getTime();
+        else if (c.from in constraints) {
+            if (constraints[c.from] instanceof Date) {
+                task[c.from] = constraints[c.from].getTime();
             }
             else {
-                task[from] = constraints[from];
+                task[c.from] = constraints[c.from];
             }
         }
         else {
-            console.log("No " + from + " date specified.");
+            console.log("No " + c.from + " date specified.");
             return;
         }
 
@@ -316,32 +316,29 @@ var taskLib = (function() {
         // ALAP: This task can't finish later than any of its
         // successors's starts.
         angular.forEach(task[prev], function(id) {
-            var t = dir * tasks[id][to];
-            var f = dir * task[from];
-
-            if (dir * tasks[id][to] > dir * task[from]) {
-                task[from] = tasks[id][to];
+            if (c.dir * tasks[id][c.to] > c.dir * task[c.from]) {
+                task[c.from] = tasks[id][c.to];
             }
         });
 
-        var d = new Date(task[from]);
+        var d = new Date(task[c.from]);
 
 
         // Adjust end of day to start of next (ASAP) or start of day
         // to end of previous (ALAP)
         if (constraints["type"] == "asap") {
             if (d.getHours() == constraints["hoursPerDay"]) {
-                d.setDate(d.getDate() + (dir * 1));
+                d.setDate(d.getDate() + (c.dir * 1));
                 d.setHours(0);
             }
         }
         else {
             if (d.getHours() == 0) {
-                d.setDate(d.getDate() + (dir * 1));
+                d.setDate(d.getDate() + (c.dir * 1));
                 d.setHours(constraints["hoursPerDay"]);
             }
         }
-        task[from] = d.getTime();
+        task[c.from] = d.getTime();
 
         // Loop until available hours by day is enough to
         // accomplish remaining hours.
@@ -349,32 +346,32 @@ var taskLib = (function() {
         while (remainingHours > 0) {
             var available = availableHours(d, task.resource, constraints);
             if (available >= remainingHours) {
-                d.setHours(d.getHours() + (dir * remainingHours));
+                d.setHours(d.getHours() + (c.dir * remainingHours));
                 remainingHours = 0;
             }
             else {
                 remainingHours -= available;
-                d.setDate(d.getDate() + (dir * 1));
-                d.setHours(dir == 1 ? 0 : constraints["hoursPerDay"]);
+                d.setDate(d.getDate() + (c.dir * 1));
+                d.setHours(c.dir == 1 ? 0 : constraints["hoursPerDay"]);
             }
         }
-        task[to] = d.getTime();
+        task[c.to] = d.getTime();
 
         // Propagate end up to ancestors;
         for (var parentId = task.parent;
              parentId != taskLib.noParent;
              parentId = tasks[parentId].parent) {
-            if (typeof tasks[parentId][from] === "undefined"
-                || dir * tasks[parentId][from] > dir * task[from]) {
-                tasks[parentId][from] = task[from];
+            if (typeof tasks[parentId][c.from] === "undefined"
+                || c.dir * tasks[parentId][c.from] > c.dir * task[c.from]) {
+                tasks[parentId][c.from] = task[c.from];
             }
-            if (typeof tasks[parentId][to] === "undefined"
-                || dir * tasks[parentId][to] < dir * task[to]) {
-                tasks[parentId][to] = task[to];
+            if (typeof tasks[parentId][c.to] === "undefined"
+                || c.dir * tasks[parentId][c.to] < c.dir * task[c.to]) {
+                tasks[parentId][c.to] = task[c.to];
             }
         }
 
-        nextByResource[task.resource] = task[to];
+        nextByResource[task.resource] = task[c.to];
     };
 
     var compareOneField = function(t1, t2, field) {
