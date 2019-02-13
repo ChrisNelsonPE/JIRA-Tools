@@ -336,7 +336,7 @@ app.controller('MainCtrl', function($http, $q) {
 
         var ganttTask = new JSGantt.TaskItem(chart,
                                              task.id,
-                                             task.name,
+                                             (task.cp ? "*" : '') + task.name,
                                              hasChildren ? '' : startString,
                                              hasChildren ? '' : finishString,
                                              task.display,
@@ -423,14 +423,21 @@ app.controller('MainCtrl', function($http, $q) {
 
                 resolveEpics(tasks);
                 
-                taskLib.scheduleTasks(tasks, compareTasks);
+                taskLib.scheduleTasks(tasks,
+                                      compareTasks,
+                                      {
+                                          "hoursPerDay" : vm.availableHours,
+                                          "cp" : true
+                                      });
 
                 if (true) {
                     g.setDateInputFormat("yyyy-mm-dd"); // ISO
                     
-                    taskLib.wbsVisit(tasks, function(tasks, key) {
-                        addTaskToChart(g, tasks[key]);
-                    });
+                    taskLib.wbsVisit(tasks,
+                                     function(tasks, key) {
+                                         addTaskToChart(g, tasks[key]);
+                                     },
+                                     taskLib.compareStart);
                 }
                 else {
                     addSampleTasks(g);
