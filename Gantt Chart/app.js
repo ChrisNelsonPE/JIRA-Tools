@@ -94,8 +94,8 @@ app.controller('MainCtrl', function($http, $q) {
     };
     
     // TODO - get from type, resource, or something
-    var taskColor = function(issue) {
-        return "Skyblue";
+    var taskColor = function(task) {
+        return task.cp ? 'Red' : 'Skyblue';
     };
 
     // A helper for taskGetWork()
@@ -232,7 +232,6 @@ app.controller('MainCtrl', function($http, $q) {
         task.milestone = false; // Don't have milestones in Jira
 
         // Some computed/dependent stuff
-        task.display = taskColor(issue);
         task.type = taskType(issue);
         task.priority = taskPriority(issue);
         // FUTURE - Process status.  For example, we might prioritize
@@ -339,7 +338,7 @@ app.controller('MainCtrl', function($http, $q) {
                                              (task.cp ? "*" : '') + task.name,
                                              hasChildren ? '' : startString,
                                              hasChildren ? '' : finishString,
-                                             task.display,
+                                             taskColor(task),
                                              task.link,
                                              task.milestone,
                                              task.resource,
