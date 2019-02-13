@@ -46,6 +46,11 @@ app.controller('MainCtrl', function($http, $q) {
     // not really experience-based.
     vm.defaultEstimateHours = 8;
 
+    // If an issue isn't done but has used up its estimate, this is
+    // better than counting in a zero
+    // TODO - make this configurable
+    vm.overEstimatePadHours = 4;
+
     // Available hours per day (per developer) after meetings,
     // unscheduled maintenance, etc.
     vm.availableHours = 5;
@@ -103,6 +108,11 @@ app.controller('MainCtrl', function($http, $q) {
         // If the issue is done, there is no remaining work.
         if (issue.fields.status.statusCategory.name == 'Done') {
             return 0;
+        }
+        // The ticket is still open but has used up all of its estimate,
+        // default to something non-zero
+        else if (issue.fields.timeestimate == 0) {
+            return vm.overEstimatePadHours;
         }
         else if (!issue.fields.timeestimate) {
             // If there is no estimate at all, default
