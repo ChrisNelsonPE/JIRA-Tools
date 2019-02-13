@@ -228,16 +228,23 @@ app.controller('MainCtrl', function($http, $q) {
 
     var taskFromJiraIssue = function(issue) {
         var task = {};
+
+        // A few issue fields we want to carry around with the
+        // task.  taskLib ignores this.
+        task.data = {
+            "key" : issue.key,
+            // issue.self is an API link.
+            "link" : "https://" + vm.domain
+                + "/browse/"+ issue.key
+                + "?filter="+ vm.filterNumber,
+            "epic" : issue.fields[epicLinkField]
+        }
+        
         // Simple stuff
         task.id = parseInt(issue.id);
         task.name = issue.key + ":" + issue.fields.summary;
-        task.key = issue.key;
+        
         // TODO - status? Add to name?
-
-        // issue.self is an API link.
-        task.link = "https://" + vm.domain
-            + "/browse/"+ task.key
-            + "?filter="+ vm.filterNumber;
         
         task.milestone = false; // Don't have milestones in Jira
 
@@ -262,8 +269,6 @@ app.controller('MainCtrl', function($http, $q) {
         }
         task.durationHours = task.workedHours + task.remainingHours;
 
-        task.epic = issue.fields[epicLinkField];
-
         return task;
     };
 
@@ -273,9 +278,9 @@ app.controller('MainCtrl', function($http, $q) {
         angular.forEach(tasks, function(task) {
             // If the task has no parent but has an epic, try to find
             // the id for the epic in the list of tasks.
-            if (task.parent == taskLib.noParent && task.epic != "") {
+            if (task.parent == taskLib.noParent && task.data.epic != "") {
                 angular.forEach(tasks, function(t) {
-                    if (t.key == task.epic) {
+                    if (t.data.key == task.data.epic) {
                         task.parent = t.id;
                         t.children.add(task.id);
                     }
@@ -349,7 +354,7 @@ app.controller('MainCtrl', function($http, $q) {
                                              hasChildren ? '' : startString,
                                              hasChildren ? '' : finishString,
                                              taskColor(task),
-                                             task.link,
+                                             task.data.link,
                                              task.milestone,
                                              task.resource,
                                              completionPercent.toFixed(2),
