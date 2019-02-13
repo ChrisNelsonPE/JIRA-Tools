@@ -133,8 +133,8 @@ app.controller('MainCtrl', function($http, $q) {
     };
 
     var taskDependencies = function(issue) {
-        var blocks = new Set([]);   // Predecessors
-        var blocking = new Set([]); // Successors
+        var after = new Set([]);   // Predecessors
+        var before = new Set([]); // Successors
         var parent = taskLib.noParent; 
         var children = new Set([]);
         
@@ -158,7 +158,7 @@ app.controller('MainCtrl', function($http, $q) {
                 var link = links[i];
                 if (link.inwardIssue) {
                     if (link.type.inward == predecessorLinkText) {
-                        blocks.add(parseInt(link.inwardIssue.id));
+                        after.add(parseInt(link.inwardIssue.id));
                     }
                     else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
                         var linkParent = parseInt(link.inwardIssue.id);
@@ -193,7 +193,7 @@ app.controller('MainCtrl', function($http, $q) {
                 else if (link.outwardIssue) {
                     // This tests for the inward text to simplify config.
                     if (link.type.inward == predecessorLinkText) {
-                        blocking.add(parseInt(link.outwardIssue.id));
+                        before.add(parseInt(link.outwardIssue.id));
                     }
                     else if (parentLinkTexts.indexOf(link.type.inward) > -1) {
                         children.add(parseInt(link.outwardIssue.id));
@@ -205,7 +205,7 @@ app.controller('MainCtrl', function($http, $q) {
                 }
             }
         }
-        return [blocks, parent, children, blocking];
+        return [after, parent, children, before];
     };
 
     var taskType = function(issue) {
@@ -239,7 +239,7 @@ app.controller('MainCtrl', function($http, $q) {
         // failed build over new development.
 
         task.resource = taskResource(issue);
-        [task.blocks, task.parent, task.children, task.blocking] =
+        [task.after, task.parent, task.children, task.before] =
             taskDependencies(issue);
 
         // If there are children, ignore time from Jira, it will roll
@@ -300,7 +300,7 @@ app.controller('MainCtrl', function($http, $q) {
             return -1;
         }
         // Same type, priority and duration, compare ids
-        // TODO - bigger first, more blocking first?
+        // TODO - bigger first, more before first?
         else if (t1.id < t2.id) {
             return -1;
         }
@@ -347,7 +347,7 @@ app.controller('MainCtrl', function($http, $q) {
                                              hasChildren, // Group
                                              task.parent,
                                              hasChildren, // Open
-                                             Array.from(task.blocks).join());
+                                             Array.from(task.after).join());
         chart.AddTaskItem(ganttTask);
     };
 
