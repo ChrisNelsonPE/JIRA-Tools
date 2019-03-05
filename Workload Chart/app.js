@@ -74,6 +74,30 @@ app.controller('MainCtrl', function($window, $http, $q) {
         vm.remember = true;
     }
 
+    // Based on https://stackoverflow.com/questions/36329630 to add
+    // capacity line.  scale suggestedMax and annotation value are
+    // replaced when the data is loaded.
+    vm.chartOptions = {
+        scales: {
+            yAxes: [{
+                ticks: {
+                    suggestedMax: 100
+                }
+            }]
+        },
+        annotation: {
+            annotations: [
+                {
+                    type: "line",
+                    mode: "horizontal",
+                    scaleID: "y-axis-0",
+                    value: "50",
+                    borderColor: "red",
+                }
+            ]
+        }
+    };
+    
     vm.submit = function() {
         vm.message = "";
         vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
@@ -154,6 +178,12 @@ app.controller('MainCtrl', function($window, $http, $q) {
                 // Each person can only work so many hours a day.
                 // Zero means "don't show capacity and overwork."
                 var capacity = vm.availableHours * vm.daysRemaining;
+
+                // Set the level of the capacity line
+                vm.chartOptions.annotation.annotations[0].value = capacity;
+                // Suggest that the Y axis be 10% taller than capacity
+                vm.chartOptions.scales.yAxes[0].ticks.suggestedMax =
+                    capacity * 1.1;
                 
                 if (capacity == 0) {
                     vm.message = "";

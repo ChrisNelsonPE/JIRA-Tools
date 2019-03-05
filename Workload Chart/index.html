@@ -6,6 +6,7 @@
   <script src="app.js"></script>
   <script src="node_modules/chart.js/dist/Chart.min.js"></script>
   <script src="node_modules/angular-chart.js/dist/angular-chart.min.js"></script>
+  <script src="node_modules/chartjs-plugin-annotation/chartjs-plugin-annotation.min.js"></script>
   <style>
     td,th {
     border-style:solid;
@@ -70,7 +71,8 @@
     <canvas id="bar" class="chart chart-bar"
             chart-data="vm.workHours"
             chart-labels="vm.assigneeNames"
-            chart-click="vm.onChartClick">
+            chart-click="vm.onChartClick"
+            chart-options="vm.chartOptions">
     </canvas>
     <span>{{vm.message}}</span>
   </section>
