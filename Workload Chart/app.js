@@ -75,6 +75,7 @@ app.controller('MainCtrl', function($window, $http, $q) {
     }
 
     vm.submit = function() {
+        vm.message = "";
         vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
 
         credential = btoa(vm.userId + ":" + vm.password);
