@@ -1,0 +1,562 @@
+var app = angular.module('jiraworkloadproj', ['chart.js']);
+
+// Show workload by release.  (Jira is a bit inconsistent with
+// "release" vs. "fixVersion" but there is a one-to-one
+// correspondence.)
+//
+// Each assignee has the same color bar across all the charts.
+//
+// The workload charts are shown in cronological order by the
+// release's Release Date.
+// FUTURE - use Start Date if Release Date isn't set.
+//
+// Optionally, each successive chart can rollup all the work for
+// previous releases so it shows *all* the work due by that date.
+
+// FUTURE - might be nice to have a chart per owner with the bar being
+// releases.
+
+// This only works if you
+// * install
+// https://chrome.google.com/webstore/detail/allow-control-allow-origi/nlfbmbojpeacfghkpbjhddihlkkiljbi?hl=en
+// * enable it
+// * configure it to intercept https://<yourJiraRoot>/rest/api/*
+app.config(function($httpProvider) {
+    $httpProvider.defaults.useXDomain = true;
+});
+
+app.controller('MainCtrl', function($window, $http, $q) {
+    document.title = "Jira Workload Projection";
+
+    vm = this;
+    // Your Jira server's domain like "yourCompany.atlassian.net" or
+    // "jira.yourCompany.local".  "https://" is assumed and added by
+    // the code when building a request.
+    vm.domain = ""
+
+    // Your Jira user ID and password (optionaly cached in local storage)
+    vm.userId = "";
+    vm.password = "";
+    
+    var storageKey = "jiraWorkloadProj";
+
+    var domain = localStorage.getItem(storageKey+".Domain");
+    if (domain != null) {
+        vm.domain = domain;
+    }
+
+    vm.projects = "";
+    var projects = localStorage.getItem(storageKey+".Projects");
+    if (projects != null) {
+	vm.projects = projects;
+    }
+
+    vm.limitToGroup = localStorage.getItem(storageKey+".LimitToGroup") == "true"
+        ? true
+        : false;
+    
+    vm.group = "";
+    var group = localStorage.getItem(storageKey+".Group");
+    if (group != null) {
+	vm.group = group;
+    }
+
+    // Default estimate for unestimated tickets.  Better than 0 but
+    // not really experience-based.
+    var defaultEstimate = localStorage.getItem(storageKey+".DefaultEstimate");
+    if (defaultEstimate == null) {
+        vm.defaultEstimateHours = 8; // Better than 0
+    }
+    else {
+        vm.defaultEstimateHours = parseInt(defaultEstimate);
+    }
+
+    // Available hours per day (per developer) after meetings,
+    // unscheduled maintenance, etc.
+    var availableHours = localStorage.getItem(storageKey+".AvailableHours");
+    if (availableHours == null) {
+        vm.availableHours = 5;
+    }
+    else {
+        vm.availableHours = parseInt(availableHours);
+    }
+
+    // Does each workload chart include all the preceeding releases
+    vm.cumulative = localStorage.getItem(storageKey+".Cumulative") == "true"
+        ? true
+        : false;
+
+    // Does the last workload chart include issues without a fixVersion
+    vm.includeUnscheduled = localStorage.getItem(storageKey+".IncludeUnscheduled") == "true"
+        ? true
+        : false;
+
+    
+    var credential = localStorage.getItem(storageKey+".Cred");
+    if (credential != null) {
+        var parts = atob(credential).split(":");
+        vm.userId = parts[0];
+        vm.password = parts[1]
+        // If we found credentials, it's because the user wanted last time
+        // to remember them so set remember true now, too.
+        vm.remember = true;
+    }
+
+    // FUTURE - it would be nice to use pattern, too.  See
+    // https://www.chartjs.org/docs/latest/general/colors.html section
+    // on Patterns.
+    var colors = [
+        // Shades of Auto/Mate yellow from
+        // https://www.w3schools.com/colors/colors_picker.asp
+        "#fdd79b",
+        "#fcc469",
+        "#fbb037",
+        "#fa9c05",
+        "#c87d04",
+        "#965e03",
+        "#643e02",
+        "#4b2f02",
+        "#321f01",
+        "#191001"
+        // Some pure colors
+        // "#ff0000",
+        // "#ffff00",
+        // "#00ff00",
+        // "#00ffff",
+        // "#0000ff",
+        // "#ff00ff",
+        // "#ff8888",
+        // "#ffff88",
+        // "#88ff88",
+        // "#88ffff",
+        // "#8888ff",
+        // "#ff88ff",
+    ];
+
+    // Preserves color assignments across charts
+    var colorByAssignee = {};
+
+
+    // Return an array of releases for all the listed projects
+    var getReleases = function(projectNames) {
+        var deferred = $q.defer();
+        Promise.all(projectNames.map(function(projectName) {
+            return getProjectReleases(projectName);
+        })).then(function successCallback(results) {
+            var releases = [];
+            for (var i = 0; i < results.length; ++i) {
+                releases = releases.concat(results[i]);
+            }
+            deferred.resolve(releases);
+        });
+        return deferred.promise;
+    };
+    
+    var getProjectReleases = function(projectName) {
+        var deferred = $q.defer();
+        var url = "https://" + vm.domain + "/rest/api/2/";
+        url += 'project/' + projectName + '/versions';
+        $http({
+            url: url,
+            method: 'GET',
+            headers: { "Authorization": "Basic " + credential }
+        })
+            .then(function successCallback(response) {
+                deferred.resolve(response.data.filter(
+                    r => !r.released && !r.archived));
+            }, function errorCallback(response) {
+                // CORS is handled by the client but we want to pass
+                // something back to the caller.
+                if (response.status == 0 && response.statusText == "") {
+                    response.status = 403;
+                    response.statusText =
+                        "Getting project releases failed in a way" +
+                        " that suggests a CORS issue.  See the README" +
+                        " for notes about installing and configuring" +
+                        " the Allow-Control-Allow-Origin plugin.";
+                    alert(response.statusText);
+                }
+                deferred.reject(response);
+            });
+        return deferred.promise;
+    };
+
+    var processReleases = function(releases) {
+        var scheduledReleases =
+            releases.filter(r => r.hasOwnProperty("releaseDate"));
+        
+        var releaseDates = new Set(scheduledReleases.map(function(r) {
+            return r.releaseDate;
+        }));
+
+        var releasesByDate = {};
+        
+        releasesByDate["No due date"] =
+            releases.filter(r => !r.hasOwnProperty("releaseDate"));
+        
+        releaseDates.forEach(function(releaseDate) {
+            releasesByDate[releaseDate] =
+                scheduledReleases.filter(r => r.releaseDate == releaseDate);
+        });
+
+        // Names of releases for the chart
+        var chartReleases = [];
+        
+        var sortedDates = Object.keys(releasesByDate).sort();
+        for (var i = 0; i < sortedDates.length; ++i) {
+            var releaseDateStr = sortedDates[i];
+
+            var releaseDate = null;
+            // This is likely off by GMT offset but it's close enough
+            // for now.
+            if (releaseDateStr != "No due date") {
+                releaseDate = Date.parse(releaseDateStr + 'T00:00:00Z');
+            }
+
+            var releaseNames = releasesByDate[releaseDateStr].map(function(r) {
+                return r.name;
+            });
+
+            var title = releaseNames.join(", ");
+            if (vm.includeUnscheduled && releaseDate == null) {
+                title += ", No fixVersion";
+            }
+            title += " (" + releaseDateStr + ")";
+            
+            if (vm.cumulative) {
+                chartReleases = chartReleases.concat(releaseNames);
+            }
+            else {
+                chartReleases = releaseNames;;
+            }
+
+            // TODO - get data in one function, build charts in another
+            // That allows us to get data once, not once per chart
+            // and allows per-user charts
+            
+            getOneChart(chartReleases, i, title, releaseDate);
+        }
+    };
+
+    var getOneChart = function(releases, chartNum, title, releaseDate) {
+        var capacity = 0;
+        if (releaseDate != null) {
+            var today = Date.now();
+            var daysRemaining = (releaseDate - today) / (24 * 60 * 60 * 1000);
+            // Work days
+            daysRemaining = (daysRemaining / 7) * 5;
+            capacity = daysRemaining * vm.availableHours;
+        }
+        
+        var chart = {
+            query : "",
+            title : title,
+            // Interaction with the chart is by index.  We display the
+            // assignee display names (e.g., "Mickey Mouse") and
+            // assigned hours.
+            assigneeNames : [],
+            // In the click handler, we get the index but want to be
+            // able to look up the Jira username/ID (e.g., "mmouse")
+            // so we build an array of IDs in the same order as we
+            // populate the chart data.
+            assigneeIds : [],
+            workHours : [],
+            colors : [],
+            // Based on https://stackoverflow.com/questions/36329630
+            // to add capacity line.  scale suggestedMax and
+            // annotation value are replaced when the data is loaded.
+            options : {
+                scales: {
+                    xAxes: [{ ticks: { autoSkip: false }}],
+                    yAxes: [{ ticks: { suggestedMin: 0, suggestedMax: 100 }}]
+                },
+                annotation: {
+                    annotations: [
+                        {
+                            type: "line",
+                            mode: "horizontal",
+                            scaleID: "y-axis-0",
+                            value: "50",
+                            borderColor: "red",
+                        }
+                    ]
+                }
+            }
+        };
+
+        // Always include the issues with fixVersion in the release list
+        var fixVersionClause = "fixVersion in ("
+            + "\"" + releases.join('","') + "\""
+            + ")";
+
+        // Include issues without a fixVersion in the last chart.
+        // This relies on vm.projects being well formed but we've used
+        // it already above so that's likely safe.
+        if (releaseDate == null && vm.includeUnscheduled) {
+            fixVersionClause = "("
+                + fixVersionClause
+                + " OR fixVersion IS EMPTY"
+                + " AND project IN (" + vm.projects + ")"
+                + ")";
+        }
+
+        query = "jql=" + fixVersionClause
+        query += " AND statusCategory != Done";
+        if (vm.limitToGroup && vm.group.length > 0) {
+            query += " AND (assignee IN membersOf(" + vm.group + ")"
+	        + " OR assignee IS Empty)";
+        }
+
+        chart.query = query;
+
+        getTickets(query)
+            .then(function successCallback(tickets) {
+                var estimates = tickets.map(estimateFromTicket);
+                
+                // A hash indexed by display name.  Each element
+                // summarizes the work for that assignee.
+                var workByAssignee = {};
+
+                angular.forEach(estimates, function(e, index) {
+                    if (!workByAssignee.hasOwnProperty(e.assigneeName)) {
+                        workByAssignee[e.assigneeName] = {
+                            hours: 0,
+                            tickets: 0,
+                            id: e.assigneeId
+                        };
+                    }
+                    workByAssignee[e.assigneeName].hours += e.hours;
+                    workByAssignee[e.assigneeName].tickets++;
+                });
+
+                // We want the bars in alphabetical order
+                var sortedNames = Object.keys(workByAssignee).sort();
+                // "Name" label will include ticket count.
+                chart.assigneeNames = sortedNames.map(
+                    function(k) { return k +
+                                  " (" + workByAssignee[k].tickets + ")"; });
+                
+                // The height of the bar is hours.
+                chart.workHours = sortedNames.map(
+                    function(k) { return workByAssignee[k].hours; });
+                
+                // Keep track of IDs in the same order so we can
+                // process clicks.
+                chart.assigneeIds = sortedNames.map(
+                    function(k) { return workByAssignee[k].id; });
+                
+                chart.colors = sortedNames.map(
+                    function(k) {
+                        if (! (k in colorByAssignee)) {
+                            if (colors.length > 0) {
+                                colorByAssignee[k] = colors.shift();
+                            }
+                        }
+                        return colorByAssignee[k];
+                    });
+
+                if (capacity > 0) {
+                    // Set the level of the capacity line
+                    chart.options.annotation.annotations[0].value = capacity;
+                    // Suggest that the Y axis be 10% taller than capacity
+                    chart.options.scales.yAxes[0].ticks.suggestedMax =
+                        capacity * 1.1;
+                }
+                else {
+                    chart.options = {};
+                }
+
+                vm.charts[chartNum] = chart;
+                
+            }, function errorCallback(response) {
+                console.log(response);
+            });
+    };
+
+    vm.submit = function() {
+        vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
+
+        credential = btoa(vm.userId + ":" + vm.password);
+
+        if (vm.remember) {
+            localStorage.setItem(storageKey+".Domain", vm.domain);
+            localStorage.setItem(storageKey+".Cred", credential);
+            localStorage.setItem(storageKey+".Projects", vm.projects);
+            localStorage.setItem(storageKey+".LimitToGroup",
+                                 vm.limitToGroup ? "true" : "false");
+            localStorage.setItem(storageKey+".Group", vm.group);
+            localStorage.setItem(storageKey+".IncludeUnscheduled",
+                                 vm.includeUnscheduled ? "true" : "false");
+            localStorage.setItem(storageKey+".DefaultEstimate",
+                                 vm.defaultEstimateHours);
+            localStorage.setItem(storageKey+".AvailableHours",
+                                 vm.availableHours);
+            localStorage.setItem(storageKey+".Cumulative",
+                                 vm.cumulative ? "true" : "false");
+        }
+        else {
+            localStorage.removeItem(storageKey+".Domain");
+            localStorage.removeItem(storageKey+".Cred");
+            localStorage.removeItem(storageKey+".Projects");
+            localStorage.removeItem(storageKey+".LimitToGroup");
+            localStorage.removeItem(storageKey+".Group");
+            localStorage.removeItem(storageKey+".IncludeUnscheduled");
+            localStorage.removeItem(storageKey+".DefaultEstimate");
+            localStorage.removeItem(storageKey+".AvailableHours");
+            localStorage.removeItem(storageKey+".Cumulative");
+        }
+
+        // Clear any data from previous submissions
+        vm.charts = [];
+
+        // Split the projects list string into an array
+        var projects = vm.projects.split(',').map(function(p) {
+            return p.trim();
+        });
+
+        // Get the open releases for each project
+        getReleases(projects)
+            .then(function successCallBack(releases) {
+                processReleases(releases);
+        }, function errorCallback(response) {
+            console.log("Error retrieving releases");
+            alert(response.data.errorMessages[0]);
+        });
+    };
+
+    vm.onTitleClick = function(chartNum) {
+        var url = "https://" + vm.domain + "/issues/"
+            + "?" + vm.charts[chartNum].query
+            + " ORDER BY fixVersion ASC";
+        $window.open(url);
+    };
+
+    vm.onChartClick = function(points, evt) {
+        var index;
+        // If the user clicked a bar, the chart tells us which
+        if (points.length > 0 && points[0].hasOwnProperty("_index")) {
+            // Which bar was clicked on that chart?
+            index = points[0]._index;
+        }
+        // If the user clicked outside a bar, we need to figure it out
+        else {
+            var width = this.chart.chart.scales['x-axis-0'].width;
+            var count = this.chart.scales['x-axis-0'].ticks.length;
+            var padding_left = this.chart.scales['x-axis-0'].paddingLeft;
+            var padding_right = this.chart.scales['x-axis-0'].paddingRight;
+            var xwidth = (width-padding_left-padding_right)/count;
+
+            var xoffset = evt.clientX - this.chart.chartArea.left;
+
+            // Which bar does this offset correspond to?
+            index = Math.floor(xoffset/xwidth);
+
+            // If outside the bar area, there's nothing to do.
+            if (index < 0 || index > count) {
+                return;
+            }
+        }
+        
+        // Which chart was clicked?
+        var htmlId = evt.currentTarget.id;
+        var chartNum = parseInt(htmlId.split('-')[1]);
+
+        // The base URL: matches filter for the chart
+        // AND limited by assignee
+        var url = "https://" + vm.domain + "/issues/"
+            + "?" + vm.charts[chartNum].query
+            + " AND assignee";
+        
+        var id = vm.charts[chartNum].assigneeIds[index];
+        // Add the rest of the assignee clause
+        if (id == "unassigned") {
+            url += " is empty";
+        } else {
+            url += "="+id;
+        }
+        url += " ORDER BY fixVersion ASC"
+        
+        $window.open(url);
+    }
+
+    var estimateFromTicket = function(ticket) {
+        var assignee = getAssignee(ticket);
+        return {
+            assigneeId : assignee.id,
+            assigneeName : assignee.name,
+            hours : getRemainingHours(ticket)
+        };
+    }
+        
+    var getAssignee = function(ticket) {
+        // If undefined, null, or empty, return Unassigned
+        if (!ticket.fields.assignee) {
+            return {
+                name: "Unassigned",
+                id: "unassigned"
+            };
+        }
+        else {
+            return {
+                name: ticket.fields.assignee.displayName,
+                id: ticket.fields.assignee.name
+            };
+        }
+    };
+
+    var getRemainingHours = function(ticket) {
+        if (ticket.fields.timeestimate == null) {
+            // If there is no estimate at all, default
+            if (!ticket.fields.timeoriginalestimate) {
+                return vm.defaultEstimateHours;
+            }
+            // There is no remaining estimate, but there is a current
+            // estimate, scale it from seconds to hours
+            else {
+                return ticket.fields.timeoriginalestimate / 3600;
+            }
+        }
+        else {
+            // There is a remaining estimate, scale it from seconds to
+            // hours.
+            return ticket.fields.timeestimate / 3600;
+        }
+    };
+
+    // Returns a promise.  When that promise is satisfied, the data
+    // passed back a list of tickets matching the Jira filter.
+    var getTickets = function(query){
+        var deferred = $q.defer();
+
+        var url = "https://" + vm.domain + "/rest/api/2/";
+        url += "search?" + query;
+        url += "&maxResults=1000";
+        
+        $http({
+            url: url,
+            method: "GET",
+            headers: { "Authorization": "Basic " + credential }
+        })
+            // FUTURE - handle paged data.  We're not done if
+            // data.startAt + data..maxResults < data.total Asking for
+            // 1000 results, above, gets around this for now.
+            .then(function successCallback(response) {
+                deferred.resolve(response.data.issues);
+            }, function errorCallback(response) {
+                // CORS is handled by the client but we want to pass
+                // something back to the caller.
+                if (response.status == 0 && response.statusText == "") {
+                    response.status = 403;
+                    response.statusText =
+                        "Getting recent ticket data failed in a way" +
+                        " that suggests a CORS issue.  See the README" +
+                        " for notes about installing and configuring" +
+                        " the Allow-Control-Allow-Origin plugin.";
+                    alert(response.statusText);
+                }
+                deferred.reject(response);
+            });
+
+        return deferred.promise;
+    };
+});

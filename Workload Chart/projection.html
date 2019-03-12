@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html ng-app="jiraworkloadproj">
+
+<head>
+  <script src="https://code.angularjs.org/1.5.8/angular.js"></script>
+  <script src="projection.js"></script>
+  <script src="node_modules/chart.js/dist/Chart.min.js"></script>
+  <script src="node_modules/angular-chart.js/dist/angular-chart.min.js"></script>
+  <script src="node_modules/chartjs-plugin-annotation/chartjs-plugin-annotation.min.js"></script>
+  <style>
+    td,th {
+    border-style:solid;
+    border-width:thin;
+    padding-left:1em;
+    padding-right:1em;
+    }
+    table {
+    border-collapse: collapse;
+    }
+  </style>
+</head>
+
+<body>
+  <section ng-controller="MainCtrl as vm">
+    <h1 ng-init="showCriteria=true" ng-click="showCriteria = ! showCriteria">
+      Jira Workload Projection
+    </h1>
+
+    <!-- Put all of this selectin in a foldable div -->
+    <div ng-show="showCriteria">
+    <div>
+      <label>Jira Domain:</label>
+      <input type="text" ng-model="vm.domain"/>
+    </div>
+    <br>
+    <div>
+      <label>User id:</label>
+      <input type="text" ng-model="vm.userId"/>
+      <label>Password:</label>
+      <input type="password" ng-model="vm.password"/>
+    </div>
+    <div>
+      <input type="checkbox" ng-model="vm.remember">
+      <label>Remember me</label>
+    </div>
+    <br>
+    <div>
+      <label>Projects:</label>
+      <input type="text" ng-model="vm.projects"/>&nbsp;
+      <input type="checkbox" ng-model="vm.limitToGroup"/>
+      <label>Limit to Jira group</label>
+      <input type="text" ng-disabled="!vm.limitToGroup" ng-model="vm.group"/>
+    </div>
+    <div>
+      <input type="checkbox" ng-model="vm.includeUnscheduled"/>
+      <label>Include issues without a fixversion</label>
+    </div>
+    <div>
+      <label>Default estimate:</label>
+      <input type="number" ng-model="vm.defaultEstimateHours"/>
+      hours
+    </div>
+    <div>
+      <label>Availability:</label>
+      <input type="number" ng-model="vm.availableHours"/>
+      hours per day
+    </div>
+    <div>
+      <input type="checkbox" ng-model="vm.cumulative"/>
+      <label>Cumulative workloads</label>
+    </div>
+    <br>
+    </div>
+    <button ng-click="vm.submit()">Get estimates</button><br>
+    <hr>
+
+    <div ng-repeat='chart in vm.charts'
+         ng-show='vm.charts[$index]'
+         style='width:500px'>
+      <!-- TODO - clicking this headline should show all the work in
+      the chart just as clicking a bar in the chart show's that user's
+      work-->
+      <h2 ng-click="vm.onTitleClick($index)">
+        <span ng-show='vm.cumulative && $index > 0'>+ </span>
+        {{vm.charts[$index].title}}
+      </h2>
+      <canvas id="bar-{{$index}}"
+              class="chart chart-bar"
+              chart-data="vm.charts[$index].workHours"
+              chart-labels="vm.charts[$index].assigneeNames"
+              chart-colors="vm.charts[$index].colors"
+              chart-options="vm.charts[$index].options"
+              chart-click="vm.onChartClick">
+      </canvas>
+      <hr>
+    </div>
+    <span>{{vm.message}}</span>
+  </section>
+</body>
+
+</html>
