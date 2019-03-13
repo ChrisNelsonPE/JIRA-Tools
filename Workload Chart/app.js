@@ -210,14 +210,37 @@ app.controller('MainCtrl', function($window, $http, $q) {
     };
 
     vm.onChartClick = function(points, evt) {
+        var index;
+        // If the user clicked a bar, the chart tells us which
+        if (points.length > 0 && points[0].hasOwnProperty("_index")) {
+            // Which bar was clicked on that chart?
+            index = points[0]._index;
+        }
+        // If the user clicked outside a bar, we need to figure it out
+        else {
+            var width = this.chart.chart.scales['x-axis-0'].width;
+            var count = this.chart.scales['x-axis-0'].ticks.length;
+            var padding_left = this.chart.scales['x-axis-0'].paddingLeft;
+            var padding_right = this.chart.scales['x-axis-0'].paddingRight;
+            var xwidth = (width-padding_left-padding_right)/count;
+
+            var xoffset = evt.clientX - this.chart.chartArea.left;
+
+            // Which bar does this offset correspond to?
+            index = Math.floor(xoffset/xwidth);
+
+            // If outside the bar area, there's nothing to do.
+            if (index < 0 || index > count) {
+                return;
+            }
+        }
+        
         // The base URL: matches filter for the chart
         // AND limited by assignee
         var url = "https://" + vm.domain + "/issues/"
             + "?" + vm.query
             + " AND assignee";
 
-        // Get the bar index
-        var index = points[0]._index;
         // Look up the ID
         var id = assigneeIds[index];
         // Add the rest of the assignee clause
