@@ -44,6 +44,12 @@
     </div>
     <br>
     <button ng-click="vm.submit()">Get estimates</button><br>
+    <div>
+      <input type="checkbox" ng-model="vm.hideDep" ng-change="vm.interlock()">
+      <label>Hide dependencies</label>
+      <input type="checkbox" ng-disabled="!vm.hideDep" ng-model="vm.hideDone">
+      <label>Hide done</label>
+    </div>
     <hr>
 
     <div style="position:relative" class="gantt" id="GanttChartDIV"></div>    

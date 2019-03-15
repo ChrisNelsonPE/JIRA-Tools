@@ -65,6 +65,9 @@ app.controller('MainCtrl', function($http, $q) {
         vm.remember = true;
     }
 
+    vm.hideDep = false;
+    vm.hideDone = false;
+
     // ========================================================================
     // Data used by parsing functions below.
     // Update these to reflect local Jira config.
@@ -396,6 +399,12 @@ app.controller('MainCtrl', function($http, $q) {
         return hash;
     };
 
+    vm.interlock = function() {
+        if (!vm.hideDep) {
+            vm.hideDone = false;
+        }
+    }
+
     vm.submit = function() {
         vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
 
@@ -423,6 +432,7 @@ app.controller('MainCtrl', function($http, $q) {
                 g.setShowComp(0); // Show/Hide % Complete(0/1)
                 g.setShowStartDate(0);
                 g.setShowEndDate(0);
+                g.setShowDep(vm.hideDep ? "0" : "1");
                 g.setCaptionType('Complete');
                 g.setLinkStyle('simple');
                 
