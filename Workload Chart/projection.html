@@ -77,9 +77,15 @@
     <div ng-repeat='chart in vm.charts'
          ng-show='vm.charts[$index]'
          style='width:500px'>
-      <h2 ng-click="vm.onTitleClick($index)">
+      <h2>
         <span ng-show='vm.cumulative && $index > 0'>+ </span>
-        {{vm.charts[$index].title}}
+        <span ng-repeat='release in vm.releases[$index]'
+              ng-click='vm.onReleaseClick(release)'>
+          {{release}}<span ng-show="!$last">, </span>
+        </span>
+        <span ng-click='vm.onDateClick($index)'>
+          ({{vm.charts[$index].releaseDate}})
+        </span>
       </h2>
       <canvas id="bar-{{$index}}"
               class="chart chart-bar"

@@ -216,12 +216,6 @@ app.controller('MainCtrl', function($window, $http, $q) {
             var releaseNames = releasesByDate[releaseDateStr].map(function(r) {
                 return r.name;
             });
-
-            var title = releaseNames.join(", ");
-            if (vm.includeUnscheduled && releaseDate == null) {
-                title += ", No fixVersion";
-            }
-            title += " (" + releaseDateStr + ")";
             
             if (vm.cumulative) {
                 chartReleases = chartReleases.concat(releaseNames);
@@ -238,19 +232,25 @@ app.controller('MainCtrl', function($window, $http, $q) {
         }
     };
 
-    var getOneChart = function(releases, chartNum, title, releaseDate) {
+    var getOneChart = function(releases, chartNum, releaseDate) {
         var capacity = 0;
+        var releaseDateStr;
         if (releaseDate != null) {
             var today = Date.now();
             var daysRemaining = (releaseDate - today) / (24 * 60 * 60 * 1000);
             // Work days
             daysRemaining = (daysRemaining / 7) * 5;
             capacity = daysRemaining * vm.availableHours;
+
+            releaseDateStr = new Date(releaseDate).toISOString().substring(0, 10);
+        }
+        else {
+            releaseDateStr = "No due date";
         }
         
         var chart = {
+            releaseDate : releaseDateStr,
             query : "",
-            title : title,
             // Interaction with the chart is by index.  We display the
             // assignee display names (e.g., "Mickey Mouse") and
             // assigned hours.
@@ -424,10 +424,16 @@ app.controller('MainCtrl', function($window, $http, $q) {
         });
     };
 
-    vm.onTitleClick = function(chartNum) {
+    vm.onDateClick = function(chartNum) {
         var url = "https://" + vm.domain + "/issues/"
             + "?" + vm.charts[chartNum].query
             + " ORDER BY fixVersion ASC";
+        $window.open(url);
+    };
+
+    vm.onReleaseClick = function(releaseName) {
+        var url = 'https://' + vm.domain + '/issues/'
+            + '?jql=fixVersion="' + releaseName + '"';
         $window.open(url);
     };
 
