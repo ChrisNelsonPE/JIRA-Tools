@@ -55,6 +55,7 @@
       <input type="checkbox" ng-model="vm.includeUnscheduled"/>
       <label>Include issues without a fixversion</label>
     </div>
+    <br>
     <div>
       <label>Default estimate:</label>
       <input type="number" ng-model="vm.defaultEstimateHours"/>
@@ -66,7 +67,13 @@
       hours per day
     </div>
     <div>
-      <input type="checkbox" ng-model="vm.cumulative"/>
+      <input type="checkbox"
+             ng-model="vm.groupByDate"
+             ng-change="vm.interlock()" />
+      <label>Group releases by date</label>&nbsp;
+      <input type="checkbox"
+             ng-model="vm.cumulative"
+             ng-disabled="!vm.groupByDate" />
       <label>Cumulative workloads</label>
     </div>
     <br>
@@ -80,10 +87,12 @@
       <h2>
         <span ng-show='vm.cumulative && $index > 0'>+ </span>
         <span ng-repeat='release in vm.releases[$index]'
-              ng-click='vm.onReleaseClick(release)'>
-          {{release}}<span ng-show="!$last">, </span>
+              title='{{release.description}}'
+              ng-click='vm.onReleaseClick(release.name)'>
+          {{release.name}}<span ng-show="!$last">, </span>
         </span>
-        <span ng-click='vm.onDateClick($index)'>
+        <span ng-click='vm.onDateClick($index)'
+              title='Issues for {{vm.charts[$index].releaseDate}}'>
           ({{vm.charts[$index].releaseDate}})
         </span>
       </h2>

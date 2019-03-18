@@ -86,12 +86,16 @@ app.controller('MainCtrl', function($window, $http, $q) {
         ? true
         : false;
 
+    // Do releases with the same release date get grouped onto the same chart
+    vm.groupByDate = localStorage.getItem(storageKey+".GroupByDate") == "true"
+        ? true
+        : false;
+
     // Does the last workload chart include issues without a fixVersion
     vm.includeUnscheduled = localStorage.getItem(storageKey+".IncludeUnscheduled") == "true"
         ? true
         : false;
 
-    
     var credential = localStorage.getItem(storageKey+".Cred");
     if (credential != null) {
         var parts = atob(credential).split(":");
@@ -182,60 +186,76 @@ app.controller('MainCtrl', function($window, $http, $q) {
     };
 
     var processReleases = function(releases) {
-        var scheduledReleases =
-            releases.filter(r => r.hasOwnProperty("releaseDate"));
-        
-        var releaseDates = new Set(scheduledReleases.map(function(r) {
-            return r.releaseDate;
-        }));
-
-        var releasesByDate = {};
-        
-        releasesByDate["No due date"] =
-            releases.filter(r => !r.hasOwnProperty("releaseDate"));
-        
-        releaseDates.forEach(function(releaseDate) {
-            releasesByDate[releaseDate] =
-                scheduledReleases.filter(r => r.releaseDate == releaseDate);
-        });
-
         // Names of releases for the chart
         var chartReleases = [];
-        
-        var sortedDates = Object.keys(releasesByDate).sort();
-        for (var i = 0; i < sortedDates.length; ++i) {
-            var releaseDateStr = sortedDates[i];
 
-            var releaseDate = null;
-            // This is likely off by GMT offset but it's close enough
-            // for now.
-            if (releaseDateStr != "No due date") {
-                releaseDate = Date.parse(releaseDateStr + 'T00:00:00Z');
-            }
-
-            var releaseNames = releasesByDate[releaseDateStr].map(function(r) {
-                return r.name;
-            });
+        // Sort releases by date, then name.
+        var sortedReleases = releases.sort(function(r1, r2) {
+            if (r1.hasOwnProperty("releaseDate")
+                && !r2.hasOwnProperty("releaseDate")) return -1;
+            if (!r1.hasOwnProperty("releaseDate")
+                && r2.hasOwnProperty("releaseDate")) return 1;
             
+            if (r1.releaseDate < r2.releaseDate) return -1;
+            if (r1.releaseDate > r2.releaseDate) return 1;
+            
+            return r1.name.localeCompare(r2.name);
+        });
+
+        // Each element is an array of releases.  Index is by chart.
+        // vm.releases[i] is
+        //  * a list with a single release (if group by release is false)
+        //  * all the releases on a date (if group by release is true)
+        // This is different from chartReleases which is
+        //  * vm.releases[i] (if cumulative is false)
+        //  * the concatenation of all vm.release[j] for j <= i (if
+        //    cumulative is true)
+        vm.releases = [];
+        
+        var previousDate = "";
+        for (var i = 0; i < sortedReleases.length; ++i) {
+            var r = sortedReleases[i];
+
+            // This release has a new date, or we're not grouping by
+            // date, put this release in a new chart
+            if (r.releaseDate != previousDate || !vm.groupByDate) {
+                vm.releases.push([ r ]);
+            }
+            // Otherwise (the same date and grouping by date) add it
+            // to the current chart
+            else {
+                vm.releases[vm.releases.length-1].push(r);
+            }
+            previousDate = r.releaseDate;
+        }
+
+        for (var i = 0; i < vm.releases.length; ++i) {
             if (vm.cumulative) {
-                chartReleases = chartReleases.concat(releaseNames);
+                chartReleases = chartReleases.concat(vm.releases[i]);
             }
             else {
-                chartReleases = releaseNames;;
+                chartReleases = vm.releases[i];
             }
+
+            var releaseDate = vm.releases[i][0].releaseDate;
 
             // TODO - get data in one function, build charts in another
             // That allows us to get data once, not once per chart
             // and allows per-user charts
             
-            getOneChart(chartReleases, i, title, releaseDate);
+            getOneChart(chartReleases, i, releaseDate);
         }
     };
 
-    var getOneChart = function(releases, chartNum, releaseDate) {
+    var getOneChart = function(releases, chartNum, releaseDateStr) {
         var capacity = 0;
-        var releaseDateStr;
-        if (releaseDate != null) {
+        if (releaseDateStr === undefined) {
+            releaseDateStr = "No due date";
+        }
+        else {
+            // This is likely off by GMT offset but it's close enough
+            // for now.
+            var releaseDate = Date.parse(releaseDateStr + 'T00:00:00Z');
             var today = Date.now();
             var daysRemaining = (releaseDate - today) / (24 * 60 * 60 * 1000);
             // Work days
@@ -243,9 +263,6 @@ app.controller('MainCtrl', function($window, $http, $q) {
             capacity = daysRemaining * vm.availableHours;
 
             releaseDateStr = new Date(releaseDate).toISOString().substring(0, 10);
-        }
-        else {
-            releaseDateStr = "No due date";
         }
         
         var chart = {
@@ -283,10 +300,15 @@ app.controller('MainCtrl', function($window, $http, $q) {
                 }
             }
         };
+        
+        var releaseNames  = releases.map(function(r) {
+            return r.name;
+        });
+            
 
         // Always include the issues with fixVersion in the release list
         var fixVersionClause = "fixVersion in ("
-            + "\"" + releases.join('","') + "\""
+            + "\"" + releaseNames.join('","') + "\""
             + ")";
 
         // Include issues without a fixVersion in the last chart.
@@ -373,6 +395,12 @@ app.controller('MainCtrl', function($window, $http, $q) {
             });
     };
 
+    vm.interlock = function() {
+        if (!vm.groupByDate) {
+            vm.cumulative = false;
+        }
+    }
+
     vm.submit = function() {
         vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
 
@@ -393,6 +421,8 @@ app.controller('MainCtrl', function($window, $http, $q) {
                                  vm.availableHours);
             localStorage.setItem(storageKey+".Cumulative",
                                  vm.cumulative ? "true" : "false");
+            localStorage.setItem(storageKey+".GroupByDate",
+                                 vm.groupByDate ? "true" : "false");
         }
         else {
             localStorage.removeItem(storageKey+".Domain");
@@ -404,6 +434,7 @@ app.controller('MainCtrl', function($window, $http, $q) {
             localStorage.removeItem(storageKey+".DefaultEstimate");
             localStorage.removeItem(storageKey+".AvailableHours");
             localStorage.removeItem(storageKey+".Cumulative");
+            localStorage.removeItem(storageKey+".GroupByDate");
         }
 
         // Clear any data from previous submissions
