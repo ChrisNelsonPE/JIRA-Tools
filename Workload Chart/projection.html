@@ -77,9 +77,6 @@
     <div ng-repeat='chart in vm.charts'
          ng-show='vm.charts[$index]'
          style='width:500px'>
-      <!-- TODO - clicking this headline should show all the work in
-      the chart just as clicking a bar in the chart show's that user's
-      work-->
       <h2 ng-click="vm.onTitleClick($index)">
         <span ng-show='vm.cumulative && $index > 0'>+ </span>
         {{vm.charts[$index].title}}
