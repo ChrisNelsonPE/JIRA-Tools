@@ -26,7 +26,7 @@ app.config(function($httpProvider) {
 });
 
 app.controller('MainCtrl', function($window, $http, $q) {
-    document.title = "Jira Workload Projection";
+    document.title = "Jira Projected Workload";
 
     vm = this;
     // Your Jira server's domain like "yourCompany.atlassian.net" or
