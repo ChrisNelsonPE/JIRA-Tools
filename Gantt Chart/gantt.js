@@ -35,6 +35,10 @@ app.controller('MainCtrl', function($http, $q) {
     if (domain != null) {
         vm.domain = domain;
     }
+    else {
+        // This is blank when loading from the file system but that's OK.
+        vm.domain = window.location.hostname;
+    }
 
     var filter = localStorage.getItem(storageKey+".Filter");
     if (filter != null) {

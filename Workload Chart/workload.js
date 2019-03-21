@@ -32,6 +32,10 @@ app.controller('MainCtrl', function($window, $http, $q) {
     if (domain != null) {
         vm.domain = domain;
     }
+    else {
+        // This is blank when loading from the file system but that's OK.
+        vm.domain = window.location.hostname;
+    }
 
     vm.queryTypes = [ "filter", "epic", "JQL", "sprint" ];
     vm.queryType = "filter";
