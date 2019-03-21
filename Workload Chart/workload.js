@@ -11,6 +11,10 @@ app.config(function($httpProvider) {
 
 app.controller('MainCtrl', function($window, $http, $q) {
     document.title = "Jira Workload";
+    var headlines = document.getElementsByTagName("h1");
+    if (headlines.length > 0) {
+        headlines[0].innerText = document.title;
+    }
 
     vm = this;
     // Your Jira server's domain like "yourCompany.atlassian.net" or
