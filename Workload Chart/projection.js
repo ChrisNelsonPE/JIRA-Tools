@@ -16,7 +16,20 @@ var app = angular.module('jiraworkloadproj', ['chart.js']);
 // FUTURE - might be nice to have a chart per owner with the bar being
 // releases.
 
-// This only works if you
+// NOTE: This uses the Jira API and can have issues with CORS because
+// Jira ignores preflight checks.
+//
+// For Jira Server, you can add
+//
+//    <Context docBase="/opt/jiratools" path="/static" />
+//
+// to the Host section of server.xml in your Jira configuation where
+// "/opt/jiratools" is where this app resides.  (Courtesy of
+// https://www.moreofless.co.uk/static-content-web-pages-images-tomcat-outside-war/
+//
+// For Jira Cloud (or if you won't want to modify your Jira config),
+// you have to load the app from the local file system, and
+//
 // * install
 // https://chrome.google.com/webstore/detail/allow-control-allow-origi/nlfbmbojpeacfghkpbjhddihlkkiljbi?hl=en
 // * enable it
