@@ -46,86 +46,124 @@ app.controller('MainCtrl', function($window, $http, $q) {
     }
 
     vm = this;
-    // Your Jira server's domain like "yourCompany.atlassian.net" or
-    // "jira.yourCompany.local".  "https://" is assumed and added by
-    // the code when building a request.
-    vm.domain = ""
-
-    // Your Jira user ID and password (optionaly cached in local storage)
-    vm.userId = "";
-    vm.password = "";
     
     var storageKey = "jiraWorkloadProj";
 
-    var domain = localStorage.getItem(storageKey+".Domain");
-    if (domain != null) {
-        vm.domain = domain;
-    }
-    else {
-        // This is blank when loading from the file system but that's OK.
-        vm.domain = window.location.hostname;
-    }
+    var loadParameters = function() {
+        // Your Jira server's domain like "yourCompany.atlassian.net" or
+        // "jira.yourCompany.local".  "https://" is assumed and added by
+        // the code when building a request.
+        vm.domain = ""
 
-    vm.projects = "";
-    var projects = localStorage.getItem(storageKey+".Projects");
-    if (projects != null) {
-	vm.projects = projects;
-    }
+        // Your Jira user ID and password (optionaly cached in local storage)
+        vm.userId = "";
+        vm.password = "";
+        
+        var domain = localStorage.getItem(storageKey+".Domain");
+        if (domain != null) {
+            vm.domain = domain;
+        }
+        else {
+            // This is blank when loading from the file system but that's OK.
+            vm.domain = window.location.hostname;
+        }
 
-    vm.limitToGroup = localStorage.getItem(storageKey+".LimitToGroup") == "true"
-        ? true
-        : false;
+        vm.projects = "";
+        var projects = localStorage.getItem(storageKey+".Projects");
+        if (projects != null) {
+	    vm.projects = projects;
+        }
+
+        vm.limitToGroup = localStorage.getItem(storageKey+".LimitToGroup") == "true"
+            ? true
+            : false;
+        
+        vm.group = "";
+        var group = localStorage.getItem(storageKey+".Group");
+        if (group != null) {
+	    vm.group = group;
+        }
+
+        // Default estimate for unestimated tickets.  Better than 0 but
+        // not really experience-based.
+        var defaultEstimate = localStorage.getItem(storageKey+".DefaultEstimate");
+        if (defaultEstimate == null) {
+            vm.defaultEstimateHours = 8; // Better than 0
+        }
+        else {
+            vm.defaultEstimateHours = parseInt(defaultEstimate);
+        }
+
+        // Available hours per day (per developer) after meetings,
+        // unscheduled maintenance, etc.
+        var availableHours = localStorage.getItem(storageKey+".AvailableHours");
+        if (availableHours == null) {
+            vm.availableHours = 5;
+        }
+        else {
+            vm.availableHours = parseInt(availableHours);
+        }
+
+        // Does each workload chart include all the preceeding releases
+        vm.cumulative = localStorage.getItem(storageKey+".Cumulative") == "true"
+            ? true
+            : false;
+
+        // Do releases with the same release date get grouped onto the same chart
+        vm.groupByDate = localStorage.getItem(storageKey+".GroupByDate") == "true"
+            ? true
+            : false;
+
+        // Does the last workload chart include issues without a fixVersion
+        vm.includeUnscheduled = localStorage.getItem(storageKey+".IncludeUnscheduled") == "true"
+            ? true
+            : false;
+
+        var credential = localStorage.getItem(storageKey+".Cred");
+        if (credential != null) {
+            var parts = atob(credential).split(":");
+            vm.userId = parts[0];
+            vm.password = parts[1]
+            // If we found credentials, it's because the user wanted last time
+            // to remember them so set remember true now, too.
+            vm.remember = true;
+        }
+    };
     
-    vm.group = "";
-    var group = localStorage.getItem(storageKey+".Group");
-    if (group != null) {
-	vm.group = group;
-    }
+    var saveParameters = function() {
+        localStorage.setItem(storageKey+".Domain", vm.domain);
+        localStorage.setItem(storageKey+".Cred", credential);
+        localStorage.setItem(storageKey+".Projects", vm.projects);
+        localStorage.setItem(storageKey+".LimitToGroup",
+                             vm.limitToGroup ? "true" : "false");
+        localStorage.setItem(storageKey+".Group", vm.group);
+        localStorage.setItem(storageKey+".IncludeUnscheduled",
+                             vm.includeUnscheduled ? "true" : "false");
+        localStorage.setItem(storageKey+".DefaultEstimate",
+                             vm.defaultEstimateHours);
+        localStorage.setItem(storageKey+".AvailableHours",
+                             vm.availableHours);
+        localStorage.setItem(storageKey+".Cumulative",
+                             vm.cumulative ? "true" : "false");
+        localStorage.setItem(storageKey+".GroupByDate",
+                             vm.groupByDate ? "true" : "false");
+    };
+    
+    var clearParameters = function() {
+        localStorage.removeItem(storageKey+".Domain");
+        localStorage.removeItem(storageKey+".Cred");
+        localStorage.removeItem(storageKey+".Projects");
+        localStorage.removeItem(storageKey+".LimitToGroup");
+        localStorage.removeItem(storageKey+".Group");
+        localStorage.removeItem(storageKey+".IncludeUnscheduled");
+        localStorage.removeItem(storageKey+".DefaultEstimate");
+        localStorage.removeItem(storageKey+".AvailableHours");
+        localStorage.removeItem(storageKey+".Cumulative");
+        localStorage.removeItem(storageKey+".GroupByDate");
+    };
 
-    // Default estimate for unestimated tickets.  Better than 0 but
-    // not really experience-based.
-    var defaultEstimate = localStorage.getItem(storageKey+".DefaultEstimate");
-    if (defaultEstimate == null) {
-        vm.defaultEstimateHours = 8; // Better than 0
-    }
-    else {
-        vm.defaultEstimateHours = parseInt(defaultEstimate);
-    }
-
-    // Available hours per day (per developer) after meetings,
-    // unscheduled maintenance, etc.
-    var availableHours = localStorage.getItem(storageKey+".AvailableHours");
-    if (availableHours == null) {
-        vm.availableHours = 5;
-    }
-    else {
-        vm.availableHours = parseInt(availableHours);
-    }
-
-    // Does each workload chart include all the preceeding releases
-    vm.cumulative = localStorage.getItem(storageKey+".Cumulative") == "true"
-        ? true
-        : false;
-
-    // Do releases with the same release date get grouped onto the same chart
-    vm.groupByDate = localStorage.getItem(storageKey+".GroupByDate") == "true"
-        ? true
-        : false;
-
-    // Does the last workload chart include issues without a fixVersion
-    vm.includeUnscheduled = localStorage.getItem(storageKey+".IncludeUnscheduled") == "true"
-        ? true
-        : false;
-
-    var credential = localStorage.getItem(storageKey+".Cred");
-    if (credential != null) {
-        var parts = atob(credential).split(":");
-        vm.userId = parts[0];
-        vm.password = parts[1]
-        // If we found credentials, it's because the user wanted last time
-        // to remember them so set remember true now, too.
-        vm.remember = true;
-    }
+    loadParameters();
+    
 
     // FUTURE - it would be nice to use pattern, too.  See
     // https://www.chartjs.org/docs/latest/general/colors.html section
@@ -428,34 +466,10 @@ app.controller('MainCtrl', function($window, $http, $q) {
         credential = btoa(vm.userId + ":" + vm.password);
 
         if (vm.remember) {
-            localStorage.setItem(storageKey+".Domain", vm.domain);
-            localStorage.setItem(storageKey+".Cred", credential);
-            localStorage.setItem(storageKey+".Projects", vm.projects);
-            localStorage.setItem(storageKey+".LimitToGroup",
-                                 vm.limitToGroup ? "true" : "false");
-            localStorage.setItem(storageKey+".Group", vm.group);
-            localStorage.setItem(storageKey+".IncludeUnscheduled",
-                                 vm.includeUnscheduled ? "true" : "false");
-            localStorage.setItem(storageKey+".DefaultEstimate",
-                                 vm.defaultEstimateHours);
-            localStorage.setItem(storageKey+".AvailableHours",
-                                 vm.availableHours);
-            localStorage.setItem(storageKey+".Cumulative",
-                                 vm.cumulative ? "true" : "false");
-            localStorage.setItem(storageKey+".GroupByDate",
-                                 vm.groupByDate ? "true" : "false");
+            saveParameters();
         }
         else {
-            localStorage.removeItem(storageKey+".Domain");
-            localStorage.removeItem(storageKey+".Cred");
-            localStorage.removeItem(storageKey+".Projects");
-            localStorage.removeItem(storageKey+".LimitToGroup");
-            localStorage.removeItem(storageKey+".Group");
-            localStorage.removeItem(storageKey+".IncludeUnscheduled");
-            localStorage.removeItem(storageKey+".DefaultEstimate");
-            localStorage.removeItem(storageKey+".AvailableHours");
-            localStorage.removeItem(storageKey+".Cumulative");
-            localStorage.removeItem(storageKey+".GroupByDate");
+            clearParameters();
         }
 
         // Clear any data from previous submissions
