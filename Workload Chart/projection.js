@@ -46,124 +46,103 @@ app.controller('MainCtrl', function($window, $http, $q) {
     }
 
     vm = this;
-    
-    var storageKey = "jiraWorkloadProj";
 
-    var loadParameters = function() {
+    var parameters = [
         // Your Jira server's domain like "yourCompany.atlassian.net" or
         // "jira.yourCompany.local".  "https://" is assumed and added by
         // the code when building a request.
-        vm.domain = ""
-
-        // Your Jira user ID and password (optionaly cached in local storage)
-        vm.userId = "";
-        vm.password = "";
+        //
+        // The default is blank when loading from the file system but that's OK.
+        { name: 'domain', key: 'Domain', default: window.location.hostname },
         
-        var domain = localStorage.getItem(storageKey+".Domain");
-        if (domain != null) {
-            vm.domain = domain;
-        }
-        else {
-            // This is blank when loading from the file system but that's OK.
-            vm.domain = window.location.hostname;
-        }
-
-        vm.projects = "";
-        var projects = localStorage.getItem(storageKey+".Projects");
-        if (projects != null) {
-	    vm.projects = projects;
-        }
-
-        vm.limitToGroup = localStorage.getItem(storageKey+".LimitToGroup") == "true"
-            ? true
-            : false;
+        { name: 'projects', key: 'Projects', default: '' },
+        { name: 'limitToGroup', key: 'LimitToGroup', default: false },
+        { name: 'group', key: 'Group', default: '' },
         
-        vm.group = "";
-        var group = localStorage.getItem(storageKey+".Group");
-        if (group != null) {
-	    vm.group = group;
-        }
-
         // Default estimate for unestimated tickets.  Better than 0 but
         // not really experience-based.
-        var defaultEstimate = localStorage.getItem(storageKey+".DefaultEstimate");
-        if (defaultEstimate == null) {
-            vm.defaultEstimateHours = 8; // Better than 0
-        }
-        else {
-            vm.defaultEstimateHours = parseInt(defaultEstimate);
-        }
-
+        { name: 'defaultEstimateHours', key: 'DefaultEstimate', default: 8 },
+        
         // Available hours per day (per developer) after meetings,
         // unscheduled maintenance, etc.
-        var availableHours = localStorage.getItem(storageKey+".AvailableHours");
-        if (availableHours == null) {
-            vm.availableHours = 5;
-        }
-        else {
-            vm.availableHours = parseInt(availableHours);
-        }
-
+        { name: 'availableHours', key: 'AvailableHours', default: 5 },
+        
         // Does each workload chart include all the preceeding releases
-        vm.cumulative = localStorage.getItem(storageKey+".Cumulative") == "true"
-            ? true
-            : false;
-
-        // Do releases with the same release date get grouped onto the same chart
-        vm.groupByDate = localStorage.getItem(storageKey+".GroupByDate") == "true"
-            ? true
-            : false;
-
+        { name: 'cumulative', key: "Cumulative", default: false },
+        
+        // Do releases with the same release date get grouped on the same chart
+        { name: 'groupByDate', key: 'GroupByDate', default: false },
+        
         // Does the last workload chart include issues without a fixVersion
-        vm.includeUnscheduled = localStorage.getItem(storageKey+".IncludeUnscheduled") == "true"
-            ? true
-            : false;
+        { name: 'includeUnscheduled', key: 'IncludeUnscheduled', default: false },
+        { name: 'credential', key: 'Cred', default: '' }
+    ];
 
-        var credential = localStorage.getItem(storageKey+".Cred");
-        if (credential != null) {
-            var parts = atob(credential).split(":");
-            vm.userId = parts[0];
-            vm.password = parts[1]
-            // If we found credentials, it's because the user wanted last time
-            // to remember them so set remember true now, too.
-            vm.remember = true;
+    var storageKey = "jiraWorkloadProj";
+
+    var loadParameters = function(storageKey, parameters, values) {
+        var found = false;
+        for (var i = 0; i < parameters.length; ++i) {
+            var p = parameters[i];
+            // Get a string from local storage
+            var s = localStorage.getItem(storageKey + "." + p.key);
+            // If there's no value, use the default
+            if (s == null) {
+                values[p.name] = p.default;
+            }
+            // If we found a value, convert it as needed
+            else {
+                found = true;
+                // Convert boolean parameters
+                if (typeof(p.default) == 'boolean') {
+                    values[p.name] = s == 'true';
+                }
+                // Convert numeric parameters
+                else if (typeof(p.default) == 'number') {
+                    values[p.name] = parseInt(s);
+                }
+                // Everything else is a string
+                else {
+                    values[p.name] = s;
+                }
+            }
+        }
+        return found;
+    };
+    
+    var saveParameters = function(storageKey, parameters, values) {
+        for (var i = 0; i < parameters.length; ++i) {
+            var p = parameters[i];
+            if (typeof(p.default) == 'boolean') {
+                localStorage.setItem(storageKey + '.' + p.key,
+                                     values[p.name] ? 'true' : 'false');
+            }
+            else {
+                localStorage.setItem(storageKey + '.' + p.key,
+                                     values[p.name]);
+            }
         }
     };
     
-    var saveParameters = function() {
-        localStorage.setItem(storageKey+".Domain", vm.domain);
-        localStorage.setItem(storageKey+".Cred", credential);
-        localStorage.setItem(storageKey+".Projects", vm.projects);
-        localStorage.setItem(storageKey+".LimitToGroup",
-                             vm.limitToGroup ? "true" : "false");
-        localStorage.setItem(storageKey+".Group", vm.group);
-        localStorage.setItem(storageKey+".IncludeUnscheduled",
-                             vm.includeUnscheduled ? "true" : "false");
-        localStorage.setItem(storageKey+".DefaultEstimate",
-                             vm.defaultEstimateHours);
-        localStorage.setItem(storageKey+".AvailableHours",
-                             vm.availableHours);
-        localStorage.setItem(storageKey+".Cumulative",
-                             vm.cumulative ? "true" : "false");
-        localStorage.setItem(storageKey+".GroupByDate",
-                             vm.groupByDate ? "true" : "false");
-    };
-    
-    var clearParameters = function() {
-        localStorage.removeItem(storageKey+".Domain");
-        localStorage.removeItem(storageKey+".Cred");
-        localStorage.removeItem(storageKey+".Projects");
-        localStorage.removeItem(storageKey+".LimitToGroup");
-        localStorage.removeItem(storageKey+".Group");
-        localStorage.removeItem(storageKey+".IncludeUnscheduled");
-        localStorage.removeItem(storageKey+".DefaultEstimate");
-        localStorage.removeItem(storageKey+".AvailableHours");
-        localStorage.removeItem(storageKey+".Cumulative");
-        localStorage.removeItem(storageKey+".GroupByDate");
+    var clearParameters = function(storageKey, parameters) {
+        for (var i = 0; i < parameters.length; ++i) {
+            var p = parameters[i];
+            localStorage.removeItem(storageKey + '.' + p.key);
+        }
     };
 
-    loadParameters();
-    
+    // If we found values, it's because the user wanted last time
+    // to remember them so set remember true now, too.
+    vm.remember = loadParameters(storageKey, parameters, vm);
+    if (vm.credential.length != 0) {
+        var parts = atob(vm.credential).split(":");
+        vm.userId = parts[0];
+        vm.password = parts[1]
+    }
+    else {
+        vm.userId = '';
+        vm.password = '';
+    }
 
     // FUTURE - it would be nice to use pattern, too.  See
     // https://www.chartjs.org/docs/latest/general/colors.html section
@@ -222,7 +201,7 @@ app.controller('MainCtrl', function($window, $http, $q) {
         $http({
             url: url,
             method: 'GET',
-            headers: { "Authorization": "Basic " + credential }
+            headers: { "Authorization": "Basic " + vm.credential }
         })
             .then(function successCallback(response) {
                 deferred.resolve(response.data.filter(
@@ -463,13 +442,13 @@ app.controller('MainCtrl', function($window, $http, $q) {
     vm.submit = function() {
         vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
 
-        credential = btoa(vm.userId + ":" + vm.password);
+        vm.credential = btoa(vm.userId + ":" + vm.password);
 
         if (vm.remember) {
-            saveParameters();
+            saveParameters(storageKey, parameters, vm);
         }
         else {
-            clearParameters();
+            clearParameters(storageKey, parameters);
         }
 
         // Clear any data from previous submissions
@@ -607,7 +586,7 @@ app.controller('MainCtrl', function($window, $http, $q) {
         $http({
             url: url,
             method: "GET",
-            headers: { "Authorization": "Basic " + credential }
+            headers: { "Authorization": "Basic " + vm.credential }
         })
             // FUTURE - handle paged data.  We're not done if
             // data.startAt + data..maxResults < data.total Asking for
