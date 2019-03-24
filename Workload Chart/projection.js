@@ -38,7 +38,7 @@ app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
-app.controller('MainCtrl', function($window, $http, $q) {
+app.controller('MainCtrl', function($window, $http, $q, $location) {
     document.title = "Jira Projected Workload";
     var headlines = document.getElementsByTagName("h1");
     if (headlines.length > 0) {
@@ -55,35 +55,36 @@ app.controller('MainCtrl', function($window, $http, $q) {
         // The default is blank when loading from the file system but that's OK.
         { name: 'domain', default: window.location.hostname },
         
-        { name: 'projects', default: '' },
-        { name: 'limitToGroup', default: false },
-        { name: 'group', default: '' },
+        { name: 'projects', query: 'proj', default: '' },
+        { name: 'limitToGroup', query: 'ltg', default: false },
+        { name: 'group', query: 'group', default: '' },
         
         // Default estimate for unestimated tickets.  Better than 0 but
         // not really experience-based.
-        { name: 'defaultEstimateHours', default: 8 },
+        { name: 'defaultEstimateHours', query: 'dftest', default: 8 },
         
         // Available hours per day (per developer) after meetings,
         // unscheduled maintenance, etc.
-        { name: 'availableHours', default: 5 },
+        { name: 'availableHours', query: 'avail', default: 5 },
         
         // Does each workload chart include all the preceeding releases
-        { name: 'cumulative', default: false },
+        { name: 'cumulative', query: 'cum', default: false },
         
         // Do releases with the same release date get grouped on the same chart
-        { name: 'groupByDate', default: false },
+        { name: 'groupByDate', query: 'gbb', default: false },
         
         // Does the last workload chart include issues without a fixVersion
-        { name: 'includeUnscheduled', default: false },
+        { name: 'includeUnscheduled', query: 'inun', default: false },
         { name: 'credential', default: '' }
     ];
 
     var storageKey = "jiraWorkloadProj";
 
+    var query = $location.search();
 
     // If we found values, it's because the user wanted last time
     // to remember them so set remember true now, too.
-    vm.remember = paramLib.loadParameters(storageKey, parameters, vm);
+    vm.remember = paramLib.loadParameters(storageKey, parameters, vm, query);
     if (vm.credential.length != 0) {
         var parts = atob(vm.credential).split(":");
         vm.userId = parts[0];
@@ -395,7 +396,11 @@ app.controller('MainCtrl', function($window, $http, $q) {
         vm.credential = btoa(vm.userId + ":" + vm.password);
 
         if (vm.remember) {
-            paramLib.saveParameters(storageKey, parameters, vm);
+            var query = {};
+            paramLib.saveParameters(storageKey, parameters, vm, query);
+            angular.forEach(query, function(value, key) {
+                $location.search(key, value);
+            });
         }
         else {
             paramLib.clearParameters(storageKey, parameters);
