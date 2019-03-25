@@ -96,8 +96,11 @@ var paramLib = (function() {
                 else {
                     localStorage.setItem(key, values[p.name]);
                 }
+                // Put the value in the query array.  Use null to
+                // indicate it is set to the default.
                 if (p.hasOwnProperty('query')) {
-                    query[p.query] = values[p.name];
+                    query[p.query] = (values[p.name] == p.default)
+                        ? null : values[p.name];
                 }
             }
         },
