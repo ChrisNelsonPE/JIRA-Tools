@@ -41,9 +41,6 @@ app.controller('MainCtrl', function($window, $http, $q) {
         vm.domain = window.location.hostname;
     }
 
-    vm.queryTypes = [ "filter", "epic", "JQL", "sprint" ];
-    vm.queryType = "filter";
-
     var queryText = localStorage.getItem(storageKey+".Query");
     if (queryText != null) {
         vm.queryText = queryText;
@@ -130,23 +127,7 @@ app.controller('MainCtrl', function($window, $http, $q) {
         vm.workHours = [];
         assigneeIds = [];
         
-        vm.query;
-        switch (vm.queryType) {
-        case "filter":
-            // TODO - validate - we expect an integer
-            vm.query = "jql=filter=" + vm.queryText;
-            break;
-        case "epic":
-            vm.query = 'jql="Epic Link" = ' + vm.queryText;
-            break;
-        case "sprint":
-            // TODO - validate - we expect an integer
-            vm.query = "jql=sprint = " + vm.queryText;
-            break;
-        case "JQL":
-            vm.query = "jql=" + vm.queryText;
-            break;
-        }
+        vm.query = "jql=" + vm.queryText;
         
         getTickets(vm.query)
             .then(function successCallback(tickets) {

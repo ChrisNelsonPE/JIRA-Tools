@@ -45,12 +45,7 @@
     </div>
     <br>
     <div>
-      <label>Query type:</label>
-      <span ng-repeat="t in vm.queryTypes">
-        <input type="radio" name="query" value="{{t}}" ng-model="vm.queryType"/>
-        <span style="text-transform:capitalize">{{t}}</span>
-      </span>
-      <br>
+      <label>Query:</label>
       <input type="text" style="width:45em" ng-model="vm.queryText"/>
     </div>
     <br>
