@@ -9,7 +9,7 @@ app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
-app.controller('MainCtrl', function($window, $http, $q) {
+app.controller('MainCtrl', function($window, $http, $q, $location) {
     document.title = "Jira Workload";
     var headlines = document.getElementsByTagName("h1");
     if (headlines.length > 0) {
@@ -17,46 +17,48 @@ app.controller('MainCtrl', function($window, $http, $q) {
     }
 
     vm = this;
-    // Your Jira server's domain like "yourCompany.atlassian.net" or
-    // "jira.yourCompany.local".  "https://" is assumed and added by
-    // the code when building a request.
-    vm.domain = ""
 
-    // Your "active tickets" filter which has JQL like
-    //   "sprint in openSprints()"
-    vm.queryText = "";
+    var parameters = [
+        // Your Jira server's domain like "yourCompany.atlassian.net" or
+        // "jira.yourCompany.local".  "https://" is assumed and added by
+        // the code when building a request.
+        //
+        // The default is blank when loading from the file system but that's OK.
+        { name: 'domain', default: window.location.hostname },
+        
+        // Default estimate for unestimated tickets.  Better than 0 but
+        // not really experience-based.
+        { name: 'defaultEstimateHours', query: 'dftest', default: 8 },
+        
+        // Available hours per day (per developer) after meetings,
+        // unscheduled maintenance, etc.
+        { name: 'availableHours', query: 'avail', default: 5 },
+        
+        // Number of days remaining to finish work
+        { name: 'daysRemaining', query: 'days', default: 1 },
+        
+        // Query text.  JQL as in an issue search
+        { name: 'queryText', query: 'q', default: '' },
+        
+        { name: 'credential', default: '' }
+    ];
 
-    // Your Jira user ID and password (optionaly cached in local storage)
-    vm.userId = "";
-    vm.password = "";
-    
     var storageKey = "jiraWorkload";
 
-    var domain = localStorage.getItem(storageKey+".Domain");
-    if (domain != null) {
-        vm.domain = domain;
+    var query = $location.search();
+
+    // If we found values, it's because the user wanted last time
+    // to remember them so set remember true now, too.
+    vm.remember = paramLib.loadParameters(storageKey, parameters, vm, query);
+    if (vm.credential.length != 0) {
+        var parts = atob(vm.credential).split(":");
+        vm.userId = parts[0];
+        vm.password = parts[1]
     }
     else {
-        // This is blank when loading from the file system but that's OK.
-        vm.domain = window.location.hostname;
+        vm.userId = '';
+        vm.password = '';
     }
-
-    var queryText = localStorage.getItem(storageKey+".Query");
-    if (queryText != null) {
-        vm.queryText = queryText;
-    }
-
-    // FUTURE - save these in local storage?
-    // Default estimate for unestimated tickets.  Better than 0 but
-    // not really experience-based.
-    vm.defaultEstimateHours = 8;
-
-    // Available hours per day (per developer) after meetings,
-    // unscheduled maintenance, etc.
-    vm.availableHours = 5;
-
-    // Number of days remaining to finish work
-    vm.daysRemaining = 1;
 
     // Interaction with the chart is by index.  We display the
     // assignee display names (e.g., "Mickey Mouse") and assigned
@@ -110,16 +112,14 @@ app.controller('MainCtrl', function($window, $http, $q) {
         credential = btoa(vm.userId + ":" + vm.password);
         
         if (vm.remember) {
-            console.log("Setting local storage");
-            localStorage.setItem(storageKey+".Domain", vm.domain);
-            localStorage.setItem(storageKey+".Query", vm.queryText);
-            localStorage.setItem(storageKey+".Cred", credential);
+            var query = {};
+            paramLib.saveParameters(storageKey, parameters, vm, query);
+            angular.forEach(query, function(value, key) {
+                $location.search(key, value);
+            });
         }
         else {
-            console.log("Clearing local storage");
-            localStorage.removeItem(storageKey+".Domain");
-            localStorage.removeItem(storageKey+".Query");
-            localStorage.removeItem(storageKey+".Cred");
+            paramLib.clearParameters(storageKey, parameters);
         }
         
         // Clear any data from previous submissions
