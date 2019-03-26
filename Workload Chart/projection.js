@@ -71,7 +71,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         { name: 'cumulative', query: 'cum', default: false },
         
         // Do releases with the same release date get grouped on the same chart
-        { name: 'groupByDate', query: 'gbb', default: false },
+        { name: 'groupByDate', query: 'gbd', default: false },
         
         // Does the last workload chart include issues without a fixVersion
         { name: 'includeUnscheduled', query: 'inun', default: false },
