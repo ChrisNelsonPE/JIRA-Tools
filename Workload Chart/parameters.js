@@ -8,8 +8,8 @@
 // The type of the default is used to parse and format values stored
 // in local stroage.  Supported types are numeric, boolean, and string.
 //
-// All functions take a storageKey which is used as a prefix when accessing
-// storage.
+// Most functions take a storageKey which is used as a prefix when
+// accessing storage.
 var paramLib = (function() {
     // Adapted from
     // https://paulund.co.uk/how-to-capitalize-the-first-letter-of-a-string-in-javascript
@@ -85,22 +85,41 @@ var paramLib = (function() {
         //
         // For each parameter, p, we save values[p.name] to
         // localStorage[storageKey+'.'+p.name]
-        saveParameters : function(storageKey, parameters, values, query = {}) {
+        saveParameters : function(storageKey, parameters, values) {
             for (var i = 0; i < parameters.length; ++i) {
                 var p = parameters[i];
                 var key = storageKey + "." + ucFirst(p.name);
-                if (typeof(p.default) == 'boolean') {
+                if (values[p.name] == p.default) {
+                    localStorage.removeItem(key);
+                }
+                else if (typeof(p.default) == 'boolean') {
                     localStorage.setItem(key,
                                          values[p.name] ? 'true' : 'false');
                 }
                 else {
                     localStorage.setItem(key, values[p.name]);
                 }
-                // Put the value in the query array.  Use null to
-                // indicate it is set to the default.
+            }
+        },
+
+        // Iterate over parameters, calling a fuction for each query
+        // parameter.
+        //
+        // The function takes two arguments: name and value.
+        //
+        // parameters - array of parameters to load
+        // value - array to load values into
+        // f - function to call for each query parameter
+        processQueryParameters : function(parameters, values, f) {
+            for (var i = 0; i < parameters.length; ++i) {
+                var p = parameters[i];
+                
+                // Execute the callback function for each query parameter
+                // Use null to indicate it is set to the default.
                 if (p.hasOwnProperty('query')) {
-                    query[p.query] = (values[p.name] == p.default)
-                        ? null : values[p.name];
+                    f(p.query,
+                      values[p.name] == p.default
+                      ? null : values[p.name]);
                 }
             }
         },

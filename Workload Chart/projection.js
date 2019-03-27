@@ -395,12 +395,13 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
 
         vm.credential = btoa(vm.userId + ":" + vm.password);
 
+        // Update URL
+        paramLib.processQueryParameters(parameters, vm,                         
+                                        $location.search.bind($location));
+
+        // Set or clear local storage
         if (vm.remember) {
-            var query = {};
-            paramLib.saveParameters(storageKey, parameters, vm, query);
-            angular.forEach(query, function(value, key) {
-                $location.search(key, value);
-            });
+            paramLib.saveParameters(storageKey, parameters, vm);
         }
         else {
             paramLib.clearParameters(storageKey, parameters);
