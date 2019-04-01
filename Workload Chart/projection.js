@@ -428,7 +428,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
     vm.onDateClick = function(chartNum) {
         var url = "https://" + vm.domain + "/issues/"
             + "?" + vm.charts[chartNum].query
-            + " ORDER BY fixVersion ASC";
+            + " ORDER BY fixVersion ASC, priority DESC";
         $window.open(url);
     };
 
@@ -481,7 +481,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         } else {
             url += "="+id;
         }
-        url += " ORDER BY fixVersion ASC"
+        url += " ORDER BY fixVersion ASC, priority DESC"
         
         $window.open(url);
     }
