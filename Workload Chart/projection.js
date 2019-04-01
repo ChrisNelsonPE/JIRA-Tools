@@ -566,4 +566,6 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
 
         return deferred.promise;
     };
+
+    vm.submit();
 });
