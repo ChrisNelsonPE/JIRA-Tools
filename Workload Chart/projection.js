@@ -236,6 +236,37 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         }
     };
 
+    var buildChartQuery = function(releases, releaseDateStr) {
+        var releaseNames  = releases.map(function(r) {
+            return r.name;
+        });
+
+        // Always include the issues with fixVersion in the release list
+        var fixVersionClause = "fixVersion in ("
+            + "\"" + releaseNames.join('","') + "\""
+            + ")";
+
+        // Include issues without a fixVersion in the last chart.
+        // This relies on vm.projects being well formed but we've used
+        // it already above so that's likely safe.
+        if (releaseDateStr == null && vm.includeUnscheduled) {
+            fixVersionClause = "("
+                + fixVersionClause
+                + " OR fixVersion IS EMPTY"
+                + " AND project IN (" + vm.projects + ")"
+                + ")";
+        }
+
+        var query = "jql=" + fixVersionClause
+        query += " AND statusCategory != Done";
+        if (vm.limitToGroup && vm.group.length > 0) {
+            query += " AND (assignee IN membersOf(" + vm.group + ")"
+	        + " OR assignee IS Empty)";
+        }
+
+        return query;
+    };
+
     var getOneChart = function(releases, chartNum, releaseDateStr) {
         var capacity = 0;
         if (releaseDateStr === undefined) {
@@ -289,36 +320,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
                 }
             }
         };
-        
-        var releaseNames  = releases.map(function(r) {
-            return r.name;
-        });
-            
 
-        // Always include the issues with fixVersion in the release list
-        var fixVersionClause = "fixVersion in ("
-            + "\"" + releaseNames.join('","') + "\""
-            + ")";
-
-        // Include issues without a fixVersion in the last chart.
-        // This relies on vm.projects being well formed but we've used
-        // it already above so that's likely safe.
-        if (releaseDate == null && vm.includeUnscheduled) {
-            fixVersionClause = "("
-                + fixVersionClause
-                + " OR fixVersion IS EMPTY"
-                + " AND project IN (" + vm.projects + ")"
-                + ")";
-        }
-
-        query = "jql=" + fixVersionClause
-        query += " AND statusCategory != Done";
-        if (vm.limitToGroup && vm.group.length > 0) {
-            query += " AND (assignee IN membersOf(" + vm.group + ")"
-	        + " OR assignee IS Empty)";
-        }
-
-        chart.query = query;
+        chart.query = buildChartQuery(releases, releaseDateStr);
 
         getTickets(query)
             .then(function successCallback(tickets) {
