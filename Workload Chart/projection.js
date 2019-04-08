@@ -287,7 +287,6 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         
         var chart = {
             releaseDate : releaseDateStr,
-                    query : "",
             // Interaction with the chart is by index.  We display the
             // assignee display names (e.g., "Mickey Mouse") and
             // assigned hours.
@@ -386,6 +385,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
 
                 vm.charts[chartNum] = buildOneChart(workByAssignee,
                                                     releaseDateStr);
+                vm.charts[chartNum].query = query;
             }, function errorCallback(response) {
                 console.log(response);
             });
