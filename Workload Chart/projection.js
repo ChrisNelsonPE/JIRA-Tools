@@ -267,6 +267,100 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         return query;
     };
 
+    var buildOneChart = function(workByAssignee, releaseDateStr) {
+        var capacity = 0;
+        if (releaseDateStr === undefined) {
+            releaseDateStr = "No due date";
+        }
+        else {
+            // This is likely off by GMT offset but it's close enough
+            // for now.
+            var releaseDate = Date.parse(releaseDateStr + 'T00:00:00Z');
+            var today = Date.now();
+            var daysRemaining = (releaseDate - today) / (24 * 60 * 60 * 1000);
+            // Work days
+            daysRemaining = (daysRemaining / 7) * 5;
+            capacity = daysRemaining * vm.availableHours;
+
+            releaseDateStr = new Date(releaseDate).toISOString().substring(0, 10);
+        }
+        
+        var chart = {
+            releaseDate : releaseDateStr,
+                    query : "",
+            // Interaction with the chart is by index.  We display the
+            // assignee display names (e.g., "Mickey Mouse") and
+            // assigned hours.
+            assigneeNames : [],
+            // In the click handler, we get the index but want to be
+            // able to look up the Jira username/ID (e.g., "mmouse")
+            // so we build an array of IDs in the same order as we
+            // populate the chart data.
+            assigneeIds : [],
+            workHours : [],
+            colors : [],
+            // Based on https://stackoverflow.com/questions/36329630
+            // to add capacity line.  scale suggestedMax and
+            // annotation value are replaced when the data is loaded.
+            options : {
+                scales: {
+                    xAxes: [{ ticks: { autoSkip: false }}],
+                    yAxes: [{ ticks: { suggestedMin: 0, suggestedMax: 100 }}]
+                },
+                annotation: {
+                    annotations: [
+                        {
+                            type: "line",
+                            mode: "horizontal",
+                            scaleID: "y-axis-0",
+                            value: "50",
+                            borderColor: "red",
+                        }
+                    ]
+                }
+            }
+        };
+
+        // We want the bars in alphabetical order
+        var sortedNames = Object.keys(workByAssignee).sort();
+        // "Name" label will include ticket count.
+        chart.assigneeNames = sortedNames.map(
+            function(k) { return k +
+                          " (" + workByAssignee[k].tickets + ")"; });
+        
+        // The height of the bar is hours.
+        chart.workHours = sortedNames.map(
+            function(k) { return workByAssignee[k].hours; });
+        
+        // Keep track of IDs in the same order so we can
+        // process clicks.
+        chart.assigneeIds = sortedNames.map(
+            function(k) { return workByAssignee[k].id; });
+        
+        chart.colors = sortedNames.map(
+            function(k) {
+                if (! (k in colorByAssignee)) {
+                    if (colors.length > 0) {
+                        colorByAssignee[k] = colors.shift();
+                    }
+                }
+                return colorByAssignee[k];
+            });
+
+        if (capacity > 0) {
+            // Set the level of the capacity line
+            chart.options.annotation.annotations[0].value = capacity;
+            // Suggest that the Y axis be 10% taller than capacity
+            chart.options.scales.yAxes[0].ticks.suggestedMax =
+                capacity * 1.1;
+        }
+        else {
+            chart.options = {};
+        }
+        
+        return chart;
+    };
+
     var getOneChart = function(releases, chartNum, releaseDateStr) {
         var query = buildChartQuery(releases, releaseDateStr);
 
@@ -290,98 +384,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
                     workByAssignee[e.assigneeName].tickets++;
                 });
 
-                var capacity = 0;
-                if (releaseDateStr === undefined) {
-                    releaseDateStr = "No due date";
-                }
-                else {
-                    // This is likely off by GMT offset but it's close enough
-                    // for now.
-                    var releaseDate = Date.parse(releaseDateStr + 'T00:00:00Z');
-                    var today = Date.now();
-                    var daysRemaining = (releaseDate - today) / (24 * 60 * 60 * 1000);
-                    // Work days
-                    daysRemaining = (daysRemaining / 7) * 5;
-                    capacity = daysRemaining * vm.availableHours;
-
-                    releaseDateStr = new Date(releaseDate).toISOString().substring(0, 10);
-                }
-                
-                var chart = {
-                    releaseDate : releaseDateStr,
-                    query : "",
-                    // Interaction with the chart is by index.  We display the
-                    // assignee display names (e.g., "Mickey Mouse") and
-                    // assigned hours.
-                    assigneeNames : [],
-                    // In the click handler, we get the index but want to be
-                    // able to look up the Jira username/ID (e.g., "mmouse")
-                    // so we build an array of IDs in the same order as we
-                    // populate the chart data.
-                    assigneeIds : [],
-                    workHours : [],
-                    colors : [],
-                    // Based on https://stackoverflow.com/questions/36329630
-                    // to add capacity line.  scale suggestedMax and
-                    // annotation value are replaced when the data is loaded.
-                    options : {
-                        scales: {
-                            xAxes: [{ ticks: { autoSkip: false }}],
-                            yAxes: [{ ticks: { suggestedMin: 0, suggestedMax: 100 }}]
-                        },
-                        annotation: {
-                            annotations: [
-                                {
-                                    type: "line",
-                                    mode: "horizontal",
-                                    scaleID: "y-axis-0",
-                                    value: "50",
-                                    borderColor: "red",
-                                }
-                            ]
-                        }
-                    }
-                };
-
-                // We want the bars in alphabetical order
-                var sortedNames = Object.keys(workByAssignee).sort();
-                // "Name" label will include ticket count.
-                chart.assigneeNames = sortedNames.map(
-                    function(k) { return k +
-                                  " (" + workByAssignee[k].tickets + ")"; });
-                
-                // The height of the bar is hours.
-                chart.workHours = sortedNames.map(
-                    function(k) { return workByAssignee[k].hours; });
-                
-                // Keep track of IDs in the same order so we can
-                // process clicks.
-                chart.assigneeIds = sortedNames.map(
-                    function(k) { return workByAssignee[k].id; });
-                
-                chart.colors = sortedNames.map(
-                    function(k) {
-                        if (! (k in colorByAssignee)) {
-                            if (colors.length > 0) {
-                                colorByAssignee[k] = colors.shift();
-                            }
-                        }
-                        return colorByAssignee[k];
-                    });
-
-                if (capacity > 0) {
-                    // Set the level of the capacity line
-                    chart.options.annotation.annotations[0].value = capacity;
-                    // Suggest that the Y axis be 10% taller than capacity
-                    chart.options.scales.yAxes[0].ticks.suggestedMax =
-                        capacity * 1.1;
-                }
-                else {
-                    chart.options = {};
-                }
-
-                vm.charts[chartNum] = chart;
-                
+                vm.charts[chartNum] = buildOneChart(workByAssignee,
+                                                    releaseDateStr);
             }, function errorCallback(response) {
                 console.log(response);
             });
