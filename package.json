@@ -1,0 +1,31 @@
+{
+  "name": "jira-tools",
+  "version": "1.0.0",
+  "description": "Some tools for working with Jira data locally.  These are easier to\r develop and see than Jira plugins, and can be used with Jira Cloud\r where you may not have the option of installing a custom plugin.",
+  "main": "index.js",
+  "dependencies": {
+    "angular-chart.js": "^1.1.1",
+    "chart.js": "^2.8.0",
+    "chartjs-plugin-annotation": "^0.5.7"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChrisNelsonPE/JIRA-Tools.git"
+  },
+  "keywords": [
+    "Jira",
+    "API",
+    "project",
+    "management"
+  ],
+  "author": "Chris Nelson, PE",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ChrisNelsonPE/JIRA-Tools/issues"
+  },
+  "homepage": "https://github.com/ChrisNelsonPE/JIRA-Tools#readme"
+}
