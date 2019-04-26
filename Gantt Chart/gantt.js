@@ -346,8 +346,13 @@ app.controller('MainCtrl', function($http, $q, $location) {
                 / (task.workedHours + task.remainingHours);
         }
 
+        try {
             var startString = new Date(task.start).toISOString().substring(0,10);
             var finishString = new Date(task.finish).toISOString().substring(0,10);
+        }
+        catch {
+            return;
+        }
 
         var hasChildren = task.children.size > 0;
 
