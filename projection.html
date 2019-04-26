@@ -104,6 +104,10 @@
               chart-options="vm.charts[$index].options"
               chart-click="vm.onChartClick">
       </canvas>
+      <span>
+        {{vm.charts[$index].totalHours}} estimated hours in
+        {{vm.charts[$index].totalIssues}} issues
+      </span>
       <hr>
     </div>
     <span>{{vm.message}}</span>

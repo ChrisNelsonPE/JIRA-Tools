@@ -59,7 +59,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         { name: 'limitToGroup', query: 'ltg', default: false },
         { name: 'group', query: 'group', default: '' },
         
-        // Default estimate for unestimated tickets.  Better than 0 but
+        // Default estimate for unestimated issues.  Better than 0 but
         // not really experience-based.
         { name: 'defaultEstimateHours', query: 'dftest', default: 8 },
         
@@ -325,12 +325,17 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         // "Name" label will include ticket count.
         chart.assigneeNames = sortedNames.map(
             function(k) { return k +
-                          " (" + workByAssignee[k].tickets + ")"; });
+                          " (" + workByAssignee[k].issues + ")"; });
         
         // The height of the bar is hours.
         chart.workHours = sortedNames.map(
             function(k) { return workByAssignee[k].hours; });
-        
+
+        chart.totalHours = chart.workHours.reduce((a,b) => a+b, 0).toFixed(2);
+
+        chart.totalIssues =
+            Object.values(workByAssignee).reduce((t, n) => t + n.issues, 0);
+
         // Keep track of IDs in the same order so we can
         // process clicks.
         chart.assigneeIds = sortedNames.map(
@@ -363,9 +368,9 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
     var getOneChart = function(releases, chartNum, releaseDateStr) {
         var query = buildChartQuery(releases, releaseDateStr);
 
-        getTickets(query)
-            .then(function successCallback(tickets) {
-                var estimates = tickets.map(estimateFromTicket);
+        getIssues(query)
+            .then(function successCallback(issues) {
+                var estimates = issues.map(estimateFromTicket);
                 
                 // A hash indexed by display name.  Each element
                 // summarizes the work for that assignee.
@@ -375,12 +380,12 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
                     if (!workByAssignee.hasOwnProperty(e.assigneeName)) {
                         workByAssignee[e.assigneeName] = {
                             hours: 0,
-                            tickets: 0,
+                            issues: 0,
                             id: e.assigneeId
                         };
                     }
                     workByAssignee[e.assigneeName].hours += e.hours;
-                    workByAssignee[e.assigneeName].tickets++;
+                    workByAssignee[e.assigneeName].issues++;
                 });
 
                 vm.charts[chartNum] = buildOneChart(workByAssignee,
@@ -538,8 +543,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
     };
 
     // Returns a promise.  When that promise is satisfied, the data
-    // passed back a list of tickets matching the Jira filter.
-    var getTickets = function(query){
+    // passed back a list of issues matching the Jira filter.
+    var getIssues = function(query){
         var deferred = $q.defer();
 
         var url = "https://" + vm.domain + "/rest/api/2/";
@@ -562,7 +567,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
                 if (response.status == 0 && response.statusText == "") {
                     response.status = 403;
                     response.statusText =
-                        "Getting recent ticket data failed in a way" +
+                        "Getting recent issue data failed in a way" +
                         " that suggests a CORS issue.  See the README" +
                         " for notes about installing and configuring" +
                         " the Allow-Control-Allow-Origin plugin.";

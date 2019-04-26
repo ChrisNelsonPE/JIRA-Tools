@@ -26,7 +26,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         // The default is blank when loading from the file system but that's OK.
         { name: 'domain', default: window.location.hostname },
         
-        // Default estimate for unestimated tickets.  Better than 0 but
+        // Default estimate for unestimated issues.  Better than 0 but
         // not really experience-based.
         { name: 'defaultEstimateHours', query: 'dftest', default: 8 },
         
@@ -130,9 +130,9 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         
         vm.query = "jql=" + vm.queryText;
         
-        getTickets(vm.query)
-            .then(function successCallback(tickets) {
-                var estimates = tickets.map(estimateFromTicket);
+        getIssues(vm.query)
+            .then(function successCallback(issues) {
+                var estimates = issues.map(estimateFromTicket);
                                 
                 // A hash indexed by display name.  Each element
                 // summarizes the work for that assignee.
@@ -142,12 +142,12 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
                     if (!workByAssignee.hasOwnProperty(e.assigneeName)) {
                         workByAssignee[e.assigneeName] = {
                             hours: 0,
-                            tickets: 0,
+                            issues: 0,
                             id: e.assigneeId
                         };
                     }
                     workByAssignee[e.assigneeName].hours += e.hours;
-                    workByAssignee[e.assigneeName].tickets++;
+                    workByAssignee[e.assigneeName].issues++;
                 });
 
                 // We want the bars in alphabetical order
@@ -155,7 +155,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
                 // "Name" label will include ticket count.
                 vm.assigneeNames = sortedNames.map(
                     function(k) { return k +
-                                  " (" + workByAssignee[k].tickets + ")"; });
+                                  " (" + workByAssignee[k].issues + ")"; });
                 // The height of the bar is hours.
                 vm.workHours = sortedNames.map(
                     function(k) { return workByAssignee[k].hours; });
@@ -288,8 +288,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
     };
 
     // Returns a promise.  When that promise is satisfied, the data
-    // passed back a list of tickets matching the Jira filter.
-    var getTickets = function(query){
+    // passed back a list of issues matching the Jira filter.
+    var getIssues = function(query){
         var deferred = $q.defer();
 
         var url = "https://" + vm.domain + "/rest/api/2/";
