@@ -9,7 +9,7 @@ app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
-app.controller('MainCtrl', function($http, $q) {
+app.controller('MainCtrl', function($http, $q, $location) {
     document.title = "Jira Time";
     var headlines = document.getElementsByTagName("h1");
     if (headlines.length > 0) {
@@ -17,67 +17,61 @@ app.controller('MainCtrl', function($http, $q) {
     }
     
     vm = this;
-    // Your Jira server's domain like "yourCompany.atlassian.net" or
-    // "jira.yourCompany.local".  "https://" is assumed and added by
-    // the code when building a request.
-    vm.domain = ""
+    var parameters = [
+        // Your Jira server's domain like "yourCompany.atlassian.net" or
+        // "jira.yourCompany.local".  "https://" is assumed and added by
+        // the code when building a request.
+        //
+        // The default is blank when loading from the file system but that's OK.
+        { name: 'domain', default: window.location.hostname },
 
-    // Your "recent tickets" filter which has JQL like
-    //   "worklogAuthor = currentUser()"
-    // or
-    //   "worklogAuthor in membersOf(myGroup)"
-    vm.filterNumber = "";
+        { name: 'filterNumber', query: 'filter', default: ''},
 
-    // Your Jira user ID and password (optionaly cached in local storage)
-    vm.userId = "";
-    vm.password = "";
-    
+        // previous, current
+        { name: 'offset', query: 'offset', default: 'current'},
+        // day, week, month
+        { name: 'scale', query: 'scale', default: 'day'},
+        
+        { name: 'onlyMine', query: 'mine', default: true },
+        
+        { name: 'credential', default: '' }
+    ];
+
     var storageKey = "jiraTime";
 
-    var domain = localStorage.getItem(storageKey+".Domain");
-    if (domain != null) {
-        vm.domain = domain;
-    }
-    else {
-        // This is blank when loading from the file system but that's OK.
-        vm.domain = window.location.hostname;
-    }
+    var query = $location.search();
 
-    var filter = localStorage.getItem(storageKey+".Filter");
-    if (filter != null) {
-        vm.filterNumber = filter;
-    }
-
-    var credential = localStorage.getItem(storageKey+".Cred");
-    if (credential != null) {
-        var parts = atob(credential).split(":");
+    // If we found values, it's because the user wanted last time
+    // to remember them so set remember true now, too.
+    vm.remember = paramLib.loadParameters(storageKey, parameters, vm, query);
+    if (vm.credential.length != 0) {
+        var parts = atob(vm.credential).split(":");
         vm.userId = parts[0];
         vm.password = parts[1]
-        // If we found credentials, it's because the user wanted last time
-        // to remember them so set remember true now, too.
-        vm.remember = true;
+    }
+    else {
+        vm.userId = '';
+        vm.password = '';
     }
 
     vm.submit = function() {
         vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
 
-        credential = btoa(vm.userId + ":" + vm.password);
+        vm.credential = btoa(vm.userId + ":" + vm.password);
         
+        // Update URL
+        paramLib.processQueryParameters(parameters, vm,                         
+                                        $location.search.bind($location));
+
+        // Set or clear local storage
         if (vm.remember) {
-            console.log("Setting local storage");
-            localStorage.setItem(storageKey+".Domain", vm.domain);
-            localStorage.setItem(storageKey+".Filter", vm.filterNumber);
-            localStorage.setItem(storageKey+".Cred", credential);
+            paramLib.saveParameters(storageKey, parameters, vm);
         }
         else {
-            console.log("Clearing local storage");
-            localStorage.removeItem(storageKey+".Domain");
-            localStorage.removeItem(storageKey+".Filter");
-            localStorage.removeItem(storageKey+".Cred");
+            paramLib.clearParameters(storageKey, parameters);
         }
 
         getWork();
-        
     };
 
     // Returns a promise.  When that promise is satisfied, the data
@@ -116,7 +110,7 @@ app.controller('MainCtrl', function($http, $q) {
         $http({
             url: url,
             method: "GET",
-            headers: { "Authorization": "Basic " + credential }
+            headers: { "Authorization": "Basic " + vm.credential }
         })
             .then(function successCallback(response) {
                 if (response.data.total > response.data.maxResults) {
@@ -144,12 +138,7 @@ app.controller('MainCtrl', function($http, $q) {
     };
 
     vm.scales = [ "day", "week", "month" ];
-    vm.scale = "day";
-
     vm.offsets = [ "previous", "current" ];
-    vm.offset = "current";
-
-    vm.onlyMine = true
 
     // Compute start of period (day, week, month) from reference date,
     // typically now.
@@ -209,7 +198,7 @@ app.controller('MainCtrl', function($http, $q) {
         $http({
             url: vm.apiUrl+"issue/"+key+"/worklog",
             method: "GET",
-            headers: { "Authorization": "Basic " + credential }
+            headers: { "Authorization": "Basic " + vm.credential }
         })
             .then(function successCallback(response) {
                 var sop = startOfPeriod(new Date(Date.now()),
