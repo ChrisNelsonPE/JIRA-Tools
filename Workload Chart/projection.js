@@ -1,4 +1,4 @@
-var app = angular.module('jiraworkloadproj', ['chart.js']);
+var app = angular.module('jiraworkloadproj', ['chart.js', 'JiraService']);
 
 // Show workload by release.  (Jira is a bit inconsistent with
 // "release" vs. "fixVersion" but there is a one-to-one
@@ -38,7 +38,7 @@ app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
-app.controller('MainCtrl', function($window, $http, $q, $location) {
+app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
     document.title = "Jira Projected Workload";
     var headlines = document.getElementsByTagName("h1");
     if (headlines.length > 0) {
@@ -368,7 +368,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
     var getOneChart = function(releases, chartNum, releaseDateStr) {
         var query = buildChartQuery(releases, releaseDateStr);
 
-        getIssues(vm, query)
+        Jira.getIssues(query)
             .then(function successCallback(issues) {
                 var estimates = issues.map(estimateFromTicket);
                 
@@ -406,6 +406,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
 
         vm.credential = btoa(vm.userId + ":" + vm.password);
+
+        Jira.config(vm.domain, vm.credential);
 
         // Update URL
         paramLib.processQueryParameters(parameters, vm,                         
@@ -540,45 +542,6 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
             // hours.
             return ticket.fields.timeestimate / 3600;
         }
-    };
-
-    // Returns a promise.  When that promise is satisfied, the data
-    // passed back is a list of issues matching the query.
-    //
-    // jqlQuery - JQL query suitable for issue search
-    var getIssues = function(options, jqlQuery){
-        var deferred = $q.defer();
-
-        var url = "https://" + options.domain + "/rest/api/2/";
-        url += "search?jql=" + jqlQuery;
-        url += "&maxResults=1000";
-        
-        $http({
-            url: url,
-            method: "GET",
-            headers: { "Authorization": "Basic " + options.credential }
-        })
-            // FUTURE - handle paged data.  We're not done if
-            // data.startAt + data..maxResults < data.total Asking for
-            // 1000 results, above, gets around this for now.
-            .then(function successCallback(response) {
-                deferred.resolve(response.data.issues);
-            }, function errorCallback(response) {
-                // CORS is handled by the client but we want to pass
-                // something back to the caller.
-                if (response.status == 0 && response.statusText == "") {
-                    response.status = 403;
-                    response.statusText =
-                        "Getting recent issue data failed in a way" +
-                        " that suggests a CORS issue.  See the README" +
-                        " for notes about installing and configuring" +
-                        " the Allow-Control-Allow-Origin plugin.";
-                    alert(response.statusText);
-                }
-                deferred.reject(response);
-            });
-
-        return deferred.promise;
     };
 
     vm.submit();
