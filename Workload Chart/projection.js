@@ -257,7 +257,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
                 + ")";
         }
 
-        var query = "jql=" + fixVersionClause
+        var query = fixVersionClause
         query += " AND statusCategory != Done";
         if (vm.limitToGroup && vm.group.length > 0) {
             query += " AND (assignee IN membersOf(" + vm.group + ")"
@@ -368,7 +368,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
     var getOneChart = function(releases, chartNum, releaseDateStr) {
         var query = buildChartQuery(releases, releaseDateStr);
 
-        getIssues(query)
+        getIssues(vm, query)
             .then(function successCallback(issues) {
                 var estimates = issues.map(estimateFromTicket);
                 
@@ -439,7 +439,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
 
     vm.onDateClick = function(chartNum) {
         var url = "https://" + vm.domain + "/issues/"
-            + "?" + vm.charts[chartNum].query
+            + "?jql=" + vm.charts[chartNum].query
             + " ORDER BY fixVersion ASC, priority DESC";
         $window.open(url);
     };
@@ -483,7 +483,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         // The base URL: matches filter for the chart
         // AND limited by assignee
         var url = "https://" + vm.domain + "/issues/"
-            + "?" + vm.charts[chartNum].query
+            + "?jql=" + vm.charts[chartNum].query
             + " AND assignee";
         
         var id = vm.charts[chartNum].assigneeIds[index];
@@ -543,18 +543,20 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
     };
 
     // Returns a promise.  When that promise is satisfied, the data
-    // passed back a list of issues matching the Jira filter.
-    var getIssues = function(query){
+    // passed back is a list of issues matching the query.
+    //
+    // jqlQuery - JQL query suitable for issue search
+    var getIssues = function(options, jqlQuery){
         var deferred = $q.defer();
 
-        var url = "https://" + vm.domain + "/rest/api/2/";
-        url += "search?" + query;
+        var url = "https://" + options.domain + "/rest/api/2/";
+        url += "search?jql=" + jqlQuery;
         url += "&maxResults=1000";
         
         $http({
             url: url,
             method: "GET",
-            headers: { "Authorization": "Basic " + vm.credential }
+            headers: { "Authorization": "Basic " + options.credential }
         })
             // FUTURE - handle paged data.  We're not done if
             // data.startAt + data..maxResults < data.total Asking for
