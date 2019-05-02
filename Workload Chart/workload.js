@@ -70,16 +70,6 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
     // look up the Jira username/ID (e.g., "mmouse") so we build an
     // array of IDs in the same order as we populate the chart data.
     var assigneeIds = [];
-    
-    var credential = localStorage.getItem(storageKey+".Cred");
-    if (credential != null) {
-        var parts = atob(credential).split(":");
-        vm.userId = parts[0];
-        vm.password = parts[1]
-        // If we found credentials, it's because the user wanted last time
-        // to remember them so set remember true now, too.
-        vm.remember = true;
-    }
 
     // Based on https://stackoverflow.com/questions/36329630 to add
     // capacity line.  scale suggestedMax and annotation value are
@@ -109,7 +99,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         vm.message = "";
         vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
 
-        credential = btoa(vm.userId + ":" + vm.password);
+        vm.credential = btoa(vm.userId + ":" + vm.password);
         
         // Update URL
         paramLib.processQueryParameters(parameters, vm,
@@ -299,7 +289,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location) {
         $http({
             url: url,
             method: "GET",
-            headers: { "Authorization": "Basic " + credential }
+            headers: { "Authorization": "Basic " + vm.credential }
         })
             // FIXME - handle paged data.  We're not done if
             // data.startAt + data..maxResults < data.total
