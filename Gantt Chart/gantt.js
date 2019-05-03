@@ -1,4 +1,4 @@
-var app = angular.module('jiragantt', []);
+var app = angular.module('jiragantt', ['JiraService']);
 
 // This only works if you
 // * install
@@ -9,7 +9,7 @@ app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
-app.controller('MainCtrl', function($http, $q, $location) {
+app.controller('MainCtrl', function($http, $q, $location, Jira) {
     document.title = "Jira Gantt";
     var headlines = document.getElementsByTagName("h1");
     if (headlines.length > 0) {
@@ -411,10 +411,10 @@ app.controller('MainCtrl', function($http, $q, $location) {
     }
 
     vm.submit = function() {
-        vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
-
         vm.credential = btoa(vm.userId + ":" + vm.password);
-        
+
+        Jira.config(vm.domain, vm.credential);
+	
         // Update URL
         paramLib.processQueryParameters(parameters, vm,                         
                                         $location.search.bind($location));
@@ -427,7 +427,7 @@ app.controller('MainCtrl', function($http, $q, $location) {
             paramLib.clearParameters(storageKey, parameters);
         }
 
-        getIssues()
+        Jira.getIssues("filter="+vm.filterNumber)
             .then(function successCallback(issues) {
                 // var here causes scoping problems, at least inside Angular.
                 g = new JSGantt.GanttChart('g',document.getElementById('GanttChartDIV'), 'day',1);
@@ -480,47 +480,4 @@ app.controller('MainCtrl', function($http, $q, $location) {
         
     };
 
-    // Returns a promise.  When that promise is satisfied, the data
-    // passed back is a list of issues which match the search criteria
-    var getIssues = function(){
-        var deferred = $q.defer();
-
-        // If the API URL isn't yet defined, return an empty list.
-        if (vm.apiUrl == undefined) {
-            deferred.resolve(estimates);
-        }
-        
-        $http({
-            url: vm.apiUrl +
-                "search?jql=filter=" +
-                vm.filterNumber +
-                "&maxResults=1000",
-            method: "GET",
-            headers: { "Authorization": "Basic " + vm.credential }
-        })
-            .then(function successCallback(response) {
-                if (response.data.total > response.data.maxResults) {
-                    alert("Not all issues processed." +
-                          " Got " + response.data.maxResults +
-                          " out of " + response.data.total);
-                }
-
-                deferred.resolve(response.data.issues);
-            }, function errorCallback(response) {
-                // CORS is handled by the client but we want to pass
-                // something back to the caller.
-                if (response.status == 0 && response.statusText == "") {
-                    response.status = 403;
-                    response.statusText =
-                        "Getting recent issue data failed in a way" +
-                        " that suggests a CORS issue.  See the README" +
-                        " for notes about installing and configuring" +
-                        " the Allow-Control-Allow-Origin plugin.";
-                    alert(response.statusText);
-                }
-                deferred.reject(response);
-            });
-
-        return deferred.promise;
-    };
 });
