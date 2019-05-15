@@ -10,6 +10,36 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
 
     var customFields = {};
 
+    // Helper for getProjectReleases().
+    var getOneProjectReleases = function(projectName) {
+        var deferred = $q.defer();
+        var url = "https://" + config.domain + "/rest/api/2/";
+        url += 'project/' + projectName + '/versions';
+        $http({
+            url: url,
+            method: 'GET',
+            headers: { "Authorization": "Basic " + config.credential }
+        })
+            .then(function successCallback(response) {
+                deferred.resolve(response.data.filter(
+                    r => !r.released && !r.archived));
+            }, function errorCallback(response) {
+                // CORS is handled by the client but we want to pass
+                // something back to the caller.
+                if (response.status == 0 && response.statusText == "") {
+                    response.status = 403;
+                    response.statusText =
+                        "Getting project releases failed in a way" +
+                        " that suggests a CORS issue.  See the README" +
+                        " for notes about installing and configuring" +
+                        " the Allow-Control-Allow-Origin plugin.";
+                    alert(response.statusText);
+                }
+                deferred.reject(response);
+            });
+        return deferred.promise;
+    };
+
 
     // Public functions
     var jira = {};
@@ -56,6 +86,43 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
                 deferred.reject(response);
             });
 
+        return deferred.promise;
+    };
+
+    // Get releases for one or more projects
+    //
+    // projectNames - a string like "FOO,BAR" or an array of strings
+    //                like ["FOO", "BAR"]
+    //
+    // Returns a promise which is resolved with an array of releases
+    // for all the listed projects
+    jira.getProjectReleases = function(projectNames) {
+        var deferred = $q.defer();
+        
+        var projectNameArray;
+        if (typeof(projectNames) === 'string') {
+            // Split the projects list string into an array
+            projectNameArray = projectNames.split(',').map(function(p) {
+                return p.trim();
+            });
+        }
+        else if (typeof(projectNames) === 'object') {
+            projectNameArray = projectNames;
+        }
+        else {
+            console.log('getProjectReleases() called with invalid argument');
+            deferred.reject();
+        }
+
+        Promise.all(projectNameArray.map(function(projectName) {
+            return getOneProjectReleases(projectName);
+        })).then(function successCallback(results) {
+            var releases = [];
+            for (var i = 0; i < results.length; ++i) {
+                releases = releases.concat(results[i]);
+            }
+            deferred.resolve(releases);
+        });
         return deferred.promise;
     };
 

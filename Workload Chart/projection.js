@@ -137,50 +137,6 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
     var colorByAssignee = {};
 
 
-    // Return an array of releases for all the listed projects
-    var getReleases = function(projectNames) {
-        var deferred = $q.defer();
-        Promise.all(projectNames.map(function(projectName) {
-            return getProjectReleases(projectName);
-        })).then(function successCallback(results) {
-            var releases = [];
-            for (var i = 0; i < results.length; ++i) {
-                releases = releases.concat(results[i]);
-            }
-            deferred.resolve(releases);
-        });
-        return deferred.promise;
-    };
-    
-    var getProjectReleases = function(projectName) {
-        var deferred = $q.defer();
-        var url = "https://" + vm.domain + "/rest/api/2/";
-        url += 'project/' + projectName + '/versions';
-        $http({
-            url: url,
-            method: 'GET',
-            headers: { "Authorization": "Basic " + vm.credential }
-        })
-            .then(function successCallback(response) {
-                deferred.resolve(response.data.filter(
-                    r => !r.released && !r.archived));
-            }, function errorCallback(response) {
-                // CORS is handled by the client but we want to pass
-                // something back to the caller.
-                if (response.status == 0 && response.statusText == "") {
-                    response.status = 403;
-                    response.statusText =
-                        "Getting project releases failed in a way" +
-                        " that suggests a CORS issue.  See the README" +
-                        " for notes about installing and configuring" +
-                        " the Allow-Control-Allow-Origin plugin.";
-                    alert(response.statusText);
-                }
-                deferred.reject(response);
-            });
-        return deferred.promise;
-    };
-
     var processReleases = function(releases) {
         // Names of releases for the chart
         var chartReleases = [];
@@ -431,13 +387,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         // Clear any data from previous submissions
         vm.charts = [];
 
-        // Split the projects list string into an array
-        var projects = vm.projects.split(',').map(function(p) {
-            return p.trim();
-        });
-
         // Get the open releases for each project
-        getReleases(projects)
+        Jira.getProjectReleases(vm.projects)
             .then(function successCallBack(releases) {
                 processReleases(releases);
         }, function errorCallback(response) {
