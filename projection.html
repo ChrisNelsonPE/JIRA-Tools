@@ -58,14 +58,24 @@
     </div>
     <br>
     <div>
-      <label>Default estimate:</label>
-      <input type="number" ng-model="vm.defaultEstimateHours"/>
-      hours
+      <label>Unit:</label>
+      <span ng-repeat="u in vm.units">
+        <input id="unit-{{u}}"
+               type="radio"
+               name="unit"
+               value="{{u}}" ng-model="vm.unit"/>
+        <label for="unit-{{u}}">{{u}}</label>
+      </span>
     </div>
     <div>
-      <label>Availability:</label>
-      <input type="number" ng-model="vm.availableHours"/>
-      hours per day
+      <label>Default estimate:</label>
+      <input type="number" ng-model="vm.defaultEstimate"/>
+      {{vm.unit}}s
+    </div>
+    <div>
+      <label>Burn rate:</label>
+      <input type="number" ng-model="vm.burnRate"/>
+      {{vm.unit}}s per day per developer
     </div>
     <div>
       <input type="checkbox"
@@ -99,14 +109,14 @@
       </h2>
       <canvas id="bar-{{$index}}"
               class="chart chart-bar"
-              chart-data="vm.charts[$index].workHours"
+              chart-data="vm.charts[$index].work"
               chart-labels="vm.charts[$index].assigneeNames"
               chart-colors="vm.charts[$index].colors"
               chart-options="vm.charts[$index].options"
               chart-click="vm.onChartClick">
       </canvas>
       <span>
-        {{vm.charts[$index].totalHours}} estimated hours in
+        {{vm.charts[$index].totalWork}} estimated {{vm.unit}}s in
         {{vm.charts[$index].totalIssues}} issues
       </span>
       <hr>

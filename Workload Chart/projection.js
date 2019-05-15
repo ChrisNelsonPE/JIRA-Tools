@@ -47,6 +47,9 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
 
     vm = this;
 
+    // Tell the service about the custom fields we use.
+    Jira.customFields({ "points" : "customfield_10002" });
+
     var parameters = [
         // Your Jira server's domain like "yourCompany.atlassian.net" or
         // "jira.yourCompany.local".  "https://" is assumed and added by
@@ -58,14 +61,16 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         { name: 'projects', query: 'proj', default: '' },
         { name: 'limitToGroup', query: 'ltg', default: false },
         { name: 'group', query: 'group', default: '' },
+
+        { name: 'unit', query: 'unit', default: 'hour'},
         
         // Default estimate for unestimated issues.  Better than 0 but
         // not really experience-based.
-        { name: 'defaultEstimateHours', query: 'dftest', default: 8 },
+        { name: 'defaultEstimate', query: 'dftest', default: 8 },
         
-        // Available hours per day (per developer) after meetings,
+        // Expected units per day (per developer) after meetings,
         // unscheduled maintenance, etc.
-        { name: 'availableHours', query: 'avail', default: 5 },
+        { name: 'burnRate', query: 'rate', default: 5 },
         
         // Does each workload chart include all the preceeding releases
         { name: 'cumulative', query: 'cum', default: false },
@@ -77,6 +82,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         { name: 'includeUnscheduled', query: 'inun', default: false },
         { name: 'credential', default: '' }
     ];
+
+    vm.units = [ "hour", "point" ];
 
     var storageKey = "jiraWorkloadProj";
 
@@ -280,7 +287,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
             var daysRemaining = (releaseDate - today) / (24 * 60 * 60 * 1000);
             // Work days
             daysRemaining = (daysRemaining / 7) * 5;
-            capacity = daysRemaining * vm.availableHours;
+            capacity = daysRemaining * vm.burnRate;
 
             releaseDateStr = new Date(releaseDate).toISOString().substring(0, 10);
         }
@@ -289,14 +296,14 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
             releaseDate : releaseDateStr,
             // Interaction with the chart is by index.  We display the
             // assignee display names (e.g., "Mickey Mouse") and
-            // assigned hours.
+            // assigned work.
             assigneeNames : [],
             // In the click handler, we get the index but want to be
             // able to look up the Jira username/ID (e.g., "mmouse")
             // so we build an array of IDs in the same order as we
             // populate the chart data.
             assigneeIds : [],
-            workHours : [],
+            work : [],
             colors : [],
             // Based on https://stackoverflow.com/questions/36329630
             // to add capacity line.  scale suggestedMax and
@@ -328,10 +335,10 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
                           " (" + workByAssignee[k].issues + ")"; });
         
         // The height of the bar is hours.
-        chart.workHours = sortedNames.map(
-            function(k) { return workByAssignee[k].hours; });
+        chart.work = sortedNames.map(
+            function(k) { return workByAssignee[k].work; });
 
-        chart.totalHours = chart.workHours.reduce((a,b) => a+b, 0).toFixed(2);
+        chart.totalWork = chart.work.reduce((a,b) => a+b, 0).toFixed(2);
 
         chart.totalIssues =
             Object.values(workByAssignee).reduce((t, n) => t + n.issues, 0);
@@ -379,12 +386,12 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
                 angular.forEach(estimates, function(e, index) {
                     if (!workByAssignee.hasOwnProperty(e.assigneeName)) {
                         workByAssignee[e.assigneeName] = {
-                            hours: 0,
+                            work: 0,
                             issues: 0,
                             id: e.assigneeId
                         };
                     }
-                    workByAssignee[e.assigneeName].hours += e.hours;
+                    workByAssignee[e.assigneeName].work += e.work;
                     workByAssignee[e.assigneeName].issues++;
                 });
 
@@ -505,7 +512,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         return {
             assigneeId : assignee.id,
             assigneeName : assignee.name,
-            hours : getRemainingHours(issue)
+            work : getRemainingWork(issue)
         };
     }
         
@@ -525,11 +532,15 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         }
     };
 
-    var getRemainingHours = function(issue) {
+    var getRemainingWork = function(issue) {
+        if (vm.unit == "point") {
+            return Jira.fieldValue(issue, "points", 0);
+        }
+        
         if (issue.fields.timeestimate == null) {
             // If there is no estimate at all, default
             if (!issue.fields.timeoriginalestimate) {
-                return vm.defaultEstimateHours;
+                return vm.defaultEstimate;
             }
             // There is no remaining estimate, but there is a current
             // estimate, scale it from seconds to hours
