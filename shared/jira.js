@@ -8,6 +8,8 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
 
     var config = {};
 
+    var customFields = {};
+
 
     // Public functions
     var jira = {};
@@ -57,5 +59,42 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
         return deferred.promise;
     };
 
+    // Add custom fields to the list managed by the service.
+    //
+    // fields - a hash of custom field names indexed by "simple" names
+    //          like { "storyPoints" : "customfield_10002" }
+    //
+    // Returns the entire list of fields known to the service
+    jira.customFields = function(fields) {
+        angular.forEach(fields, function(value, key) {
+            customFields[key] = value;
+        });
+        return customFields;
+    };
+
+    // Get the custom field name for a simple name.
+    jira.customFieldName = function(simpleName) {
+        if (customFields.hasOwnProperty(simpleName)) {
+            return customFields[simpleName];
+        }
+        else {
+            return undefined;
+        }
+    };
+
+    // Get a field value from an issue.  Return the default value
+    // if issue does not have the field.
+    //
+    // fieldName - a simple or custom field name
+    jira.fieldValue = function(issue, fieldName, defaultValue = undefined) {
+        if (customFields.hasOwnProperty(fieldName)) {
+            fieldName = customFields[fieldName];
+        }
+        if (issue.fields.hasOwnProperty(fieldName)) {
+            return issue.fields[fieldName];
+        }
+        return defaultValue;
+    };
+    
     return jira;
 }]);
