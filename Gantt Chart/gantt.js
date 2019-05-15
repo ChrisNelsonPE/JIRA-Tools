@@ -29,7 +29,7 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         //   "sprint in openSprints()"
         { name: 'filterNumber', query: 'filter', default: "" },
         
-        // Default estimate for unestimated tickets.  Better than 0 but
+        // Default estimate for unestimated issues.  Better than 0 but
         // not really experience-based.
         { name: 'defaultEstimateHours', query: 'dftest', default: 8 },
         
@@ -112,7 +112,7 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         if (issue.fields.status.statusCategory.name == 'Done') {
             return 0;
         }
-        // The ticket is still open but has used up all of its estimate,
+        // The issue is still open but has used up all of its estimate,
         // default to something non-zero
         else if (issue.fields.timeestimate == 0) {
             return vm.overEstimatePadHours;

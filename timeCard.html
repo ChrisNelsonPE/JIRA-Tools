@@ -69,7 +69,7 @@
     <table class="timeCard">
       <thead>
         <tr>
-          <th>Ticket</th>
+          <th>Issue</th>
           <th>Start</th>
           <th>End</th>
           <th>Duration</th>
@@ -78,9 +78,9 @@
       </thead>
       <tbody ng-init="orderByField='started'">
         <tr ng-repeat="log in vm.work[author] |orderBy:orderByField">
-          <td class="ticketKey">
-            <a href="{{log.ticketLink}}" 
-               title="{{log.ticketSummary}}"
+          <td class="issueKey">
+            <a href="{{log.issueLink}}" 
+               title="{{log.issueSummary}}"
                target="_blank">
               {{log.key}}
             </a>

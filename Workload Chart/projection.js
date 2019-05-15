@@ -322,7 +322,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
 
         // We want the bars in alphabetical order
         var sortedNames = Object.keys(workByAssignee).sort();
-        // "Name" label will include ticket count.
+        // "Name" label will include issue count.
         chart.assigneeNames = sortedNames.map(
             function(k) { return k +
                           " (" + workByAssignee[k].issues + ")"; });
@@ -370,7 +370,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
 
         Jira.getIssues(query)
             .then(function successCallback(issues) {
-                var estimates = issues.map(estimateFromTicket);
+                var estimates = issues.map(estimateFromIssue);
                 
                 // A hash indexed by display name.  Each element
                 // summarizes the work for that assignee.
@@ -500,18 +500,18 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         $window.open(url);
     }
 
-    var estimateFromTicket = function(ticket) {
-        var assignee = getAssignee(ticket);
+    var estimateFromIssue = function(issue) {
+        var assignee = getAssignee(issue);
         return {
             assigneeId : assignee.id,
             assigneeName : assignee.name,
-            hours : getRemainingHours(ticket)
+            hours : getRemainingHours(issue)
         };
     }
         
-    var getAssignee = function(ticket) {
+    var getAssignee = function(issue) {
         // If undefined, null, or empty, return Unassigned
-        if (!ticket.fields.assignee) {
+        if (!issue.fields.assignee) {
             return {
                 name: "Unassigned",
                 id: "unassigned"
@@ -519,28 +519,28 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         }
         else {
             return {
-                name: ticket.fields.assignee.displayName,
-                id: ticket.fields.assignee.name
+                name: issue.fields.assignee.displayName,
+                id: issue.fields.assignee.name
             };
         }
     };
 
-    var getRemainingHours = function(ticket) {
-        if (ticket.fields.timeestimate == null) {
+    var getRemainingHours = function(issue) {
+        if (issue.fields.timeestimate == null) {
             // If there is no estimate at all, default
-            if (!ticket.fields.timeoriginalestimate) {
+            if (!issue.fields.timeoriginalestimate) {
                 return vm.defaultEstimateHours;
             }
             // There is no remaining estimate, but there is a current
             // estimate, scale it from seconds to hours
             else {
-                return ticket.fields.timeoriginalestimate / 3600;
+                return issue.fields.timeoriginalestimate / 3600;
             }
         }
         else {
             // There is a remaining estimate, scale it from seconds to
             // hours.
-            return ticket.fields.timeestimate / 3600;
+            return issue.fields.timeestimate / 3600;
         }
     };
 

@@ -75,8 +75,8 @@ app.controller('MainCtrl', function($http, $q, $location) {
     };
 
     // Returns a promise.  When that promise is satisfied, the data
-    // passed back is a list of recent tickets.
-    var getRecentTickets = function(){
+    // passed back is a list of recent issues.
+    var getRecentIssues = function(){
         var deferred = $q.defer();
 
         // If the API URL isn't yet defined, return an empty list.
@@ -86,9 +86,9 @@ app.controller('MainCtrl', function($http, $q, $location) {
         
         var url = vm.apiUrl + "search";
 
-        // The default maxResults is 50.  There are often more tickets
+        // The default maxResults is 50.  There are often more issues
         // worked on in a week, surely in a month.  We should handle
-        // paging but for now let's just ask for a lot of tickets.
+        // paging but for now let's just ask for a lot of issues.
         url += "?maxResults=1000";
 
         // The filter should limit whose work is returned without a
@@ -114,7 +114,7 @@ app.controller('MainCtrl', function($http, $q, $location) {
         })
             .then(function successCallback(response) {
                 if (response.data.total > response.data.maxResults) {
-                    alert("Not all tickets processed." +
+                    alert("Not all issues processed." +
                           " Got " + response.data.maxResults +
                           " out of " + response.data.total);
                 }
@@ -125,7 +125,7 @@ app.controller('MainCtrl', function($http, $q, $location) {
                 if (response.status == 0 && response.statusText == "") {
                     response.status = 403;
                     response.statusText =
-                        "Getting recent ticket data failed in a way" +
+                        "Getting recent issue data failed in a way" +
                         " that suggests a CORS issue.  See the README" +
                         " for notes about installing and configuring" +
                         " the Allow-Control-Allow-Origin plugin.";
@@ -192,7 +192,7 @@ app.controller('MainCtrl', function($http, $q, $location) {
         return start;
     };
 
-    var getTicketWork = function(issue) {
+    var getIssueWork = function(issue) {
         var key = issue.key;
 
         $http({
@@ -241,9 +241,9 @@ app.controller('MainCtrl', function($http, $q, $location) {
                         var end = new Date(ms+(secondsSpent*1000));
 
                         worklog.key = key;
-                        worklog.ticketLink = "https://" + vm.domain 
+                        worklog.issueLink = "https://" + vm.domain 
                             + "/browse/"+key+"/worklog";
-                        worklog.ticketSummary = issue.fields.summary;
+                        worklog.issueSummary = issue.fields.summary;
                         worklog.uiStart = start;
                         worklog.uiEnd = end;
                         if (!vm.work.hasOwnProperty(author)) {
@@ -267,10 +267,10 @@ app.controller('MainCtrl', function($http, $q, $location) {
         vm.secondsByAuthor = {};
         vm.totalSeconds = 0;
 
-        getRecentTickets()
+        getRecentIssues()
             .then(function successCallback(issues) {
                 angular.forEach(issues, function(issue, index) {
-                    getTicketWork(issue);
+                    getIssueWork(issue);
                 });
             }, function errorCallback(response) {
                 console.log("Error!");
