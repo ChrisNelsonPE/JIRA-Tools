@@ -42,7 +42,10 @@
     </div>
     <div>
       <input type="checkbox" ng-model="vm.remember">
-      <label>Remember me</label>
+      <label title='Save parameters in browser local storage.
+             (Credentials are encoded but not encrypted.)'>
+        Remember me
+      </label>
     </div>
     <br>
     <div>
@@ -81,11 +84,15 @@
       <input type="checkbox"
              ng-model="vm.groupByDate"
              ng-change="vm.interlock()" />
-      <label>Group releases by date</label>&nbsp;
+      <label title='All releases with the same date are on the same chart'>
+        Group releases by date
+      </label>&nbsp;
       <input type="checkbox"
              ng-model="vm.cumulative"
              ng-disabled="!vm.groupByDate" />
-      <label>Cumulative workloads</label>
+      <label title='Each chart includes issues from all previous charts'>
+        Cumulative workloads
+      </label>
     </div>
     <br>
     </div>
