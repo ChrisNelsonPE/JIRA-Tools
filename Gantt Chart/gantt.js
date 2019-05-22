@@ -480,4 +480,6 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         
     };
 
+    vm.submit();
+
 });

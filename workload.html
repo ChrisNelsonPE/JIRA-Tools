@@ -24,10 +24,12 @@
 
 <body>
   <section ng-controller="MainCtrl as vm">
-
-    <h1 ng-init="showCriteria=true" ng-click="showCriteria = ! showCriteria">
-      Jira Workload
-    </h1>
+    <div ng-init="showCriteria=true" ng-click="showCriteria = ! showCriteria">
+      <h1>
+        {{showCriteria ? "-" : "+"}}
+        Jira Workload
+      </h1>
+    </div>
 
     <div ng-show="showCriteria">
     <div>

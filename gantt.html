@@ -13,8 +13,13 @@
 
 <body>
   <section ng-controller="MainCtrl as vm">
-    <h1>Jira Gantt</h1>
-
+    <div ng-init="showCriteria=true" ng-click="showCriteria = ! showCriteria">
+      <h1>
+        {{showCriteria ? "-" : "+"}}
+        Jira Gantt
+      </h1>
+    </div>
+    <div ng-show="showCriteria">
     <div>
       <label>Jira Domain:</label>
       <input type="text" ng-model="vm.domain"/>
@@ -44,13 +49,15 @@
       hours per day
     </div>
     <br>
-    <button ng-click="vm.submit()">Get estimates</button><br>
     <div>
       <input type="checkbox" ng-model="vm.hideDep" ng-change="vm.interlock()">
       <label>Hide dependencies</label>
       <input type="checkbox" ng-disabled="!vm.hideDep" ng-model="vm.hideDone">
       <label>Hide done</label>
     </div>
+    <br>
+    </div>
+    <button ng-click="vm.submit()">Get estimates</button><br>
     <hr>
 
     <div style="position:relative" class="gantt" id="GanttChartDIV"></div>    
