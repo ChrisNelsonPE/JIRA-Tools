@@ -4,7 +4,7 @@ var app = angular.module('jiraworkloadproj', ['chart.js', 'JiraService']);
 // "release" vs. "fixVersion" but there is a one-to-one
 // correspondence.)
 //
-// Each assignee has the same color bar across all the charts.
+// Each bar has the same color bar across all the charts.
 //
 // The workload charts are shown in cronological order by the
 // release's Release Date.
@@ -62,6 +62,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         { name: 'limitToGroup', query: 'ltg', default: false },
         { name: 'group', query: 'group', default: '' },
 
+        { name: 'barCategory', query: 'cat', default: 'assignee' },
+
         { name: 'unit', query: 'unit', default: 'hour'},
         
         // Default estimate for unestimated issues.  Better than 0 but
@@ -85,6 +87,8 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
 
     vm.units = [ "hour", "point" ];
 
+    vm.categories = [ 'assignee', 'project', 'type', 'status' ];
+
     var storageKey = "jiraWorkloadProj";
 
     var query = $location.search();
@@ -102,40 +106,44 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         vm.password = '';
     }
 
-    // FUTURE - it would be nice to use pattern, too.  See
-    // https://www.chartjs.org/docs/latest/general/colors.html section
-    // on Patterns.
-    var colors = [
-        // Shades of Auto/Mate yellow from
-        // https://www.w3schools.com/colors/colors_picker.asp
-        "#fdd79b",
-        "#fcc469",
-        "#fbb037",
-        "#fa9c05",
-        "#c87d04",
-        "#965e03",
-        "#643e02",
-        "#4b2f02",
-        "#321f01",
-        "#191001"
-        // Some pure colors
-        // "#ff0000",
-        // "#ffff00",
-        // "#00ff00",
-        // "#00ffff",
-        // "#0000ff",
-        // "#ff00ff",
-        // "#ff8888",
-        // "#ffff88",
-        // "#88ff88",
-        // "#88ffff",
-        // "#8888ff",
-        // "#ff88ff",
-    ];
+    var colors = [];
+    var colorByLabel = {};
+    
+    var resetColors = function() {
+        // FUTURE - it would be nice to use pattern, too.  See
+        // https://www.chartjs.org/docs/latest/general/colors.html section
+        // on Patterns.
+        colors = [
+            // Shades of Auto/Mate yellow from
+            // https://www.w3schools.com/colors/colors_picker.asp
+            "#fdd79b",
+            "#fcc469",
+            "#fbb037",
+            "#fa9c05",
+            "#c87d04",
+            "#965e03",
+            "#643e02",
+            "#4b2f02",
+            "#321f01",
+            "#191001"
+            // Some pure colors
+            // "#ff0000",
+            // "#ffff00",
+            // "#00ff00",
+            // "#00ffff",
+            // "#0000ff",
+            // "#ff00ff",
+            // "#ff8888",
+            // "#ffff88",
+            // "#88ff88",
+            // "#88ffff",
+            // "#8888ff",
+            // "#ff88ff",
+        ];
 
-    // Preserves color assignments across charts
-    var colorByAssignee = {};
-
+        // Preserves color assignments across charts
+        colorByLabel = {};
+    }
 
     var processReleases = function(releases) {
         // Names of releases for the chart
@@ -251,7 +259,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         return query;
     };
 
-    var buildOneChart = function(workByAssignee, releaseDateStr) {
+    var buildOneChart = function(workByCategory, releaseDateStr) {
         var capacity = 0;
         if (releaseDateStr === undefined) {
             releaseDateStr = "No due date";
@@ -264,22 +272,20 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
             var daysRemaining = (releaseDate - today) / (24 * 60 * 60 * 1000);
             // Work days
             daysRemaining = (daysRemaining / 7) * 5;
-            capacity = daysRemaining * vm.burnRate;
+            if (vm.barCategory == 'assignee') {
+                capacity = daysRemaining * vm.burnRate;
+            }
 
             releaseDateStr = new Date(releaseDate).toISOString().substring(0, 10);
         }
         
         var chart = {
             releaseDate : releaseDateStr,
-            // Interaction with the chart is by index.  We display the
-            // assignee display names (e.g., "Mickey Mouse") and
-            // assigned work.
-            assigneeNames : [],
             // In the click handler, we get the index but want to be
             // able to look up the Jira username/ID (e.g., "mmouse")
             // so we build an array of IDs in the same order as we
             // populate the chart data.
-            assigneeIds : [],
+            filters : [],
             work : [],
             colors : [],
             // Based on https://stackoverflow.com/questions/36329630
@@ -304,35 +310,47 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
             }
         };
 
-        // We want the bars in alphabetical order
-        var sortedNames = Object.keys(workByAssignee).sort();
-        // "Name" label will include issue count.
-        chart.assigneeNames = sortedNames.map(
+        // Sort the labels by the specified order
+        var sortedLabels = Object.keys(workByCategory).sort(function(k1, k2) {
+            var o1 = workByCategory[k1];
+            var o2 = workByCategory[k2];
+            if (o1.order < o2.order) {
+                return -1;
+            }
+            else if (o1.order > o2.order) {
+                return 1;
+            }
+            else {
+                return 0;
+            }});
+        
+        // Label will include issue count.
+        chart.barLabels = sortedLabels.map(
             function(k) { return k +
-                          " (" + workByAssignee[k].issues + ")"; });
+                          " (" + workByCategory[k].issues + ")"; });
         
         // The height of the bar is hours.
-        chart.work = sortedNames.map(
-            function(k) { return workByAssignee[k].work; });
+        chart.work = sortedLabels.map(
+            function(k) { return workByCategory[k].work; });
 
         chart.totalWork = chart.work.reduce((a,b) => a+b, 0).toFixed(2);
 
         chart.totalIssues =
-            Object.values(workByAssignee).reduce((t, n) => t + n.issues, 0);
+            Object.values(workByCategory).reduce((t, n) => t + n.issues, 0);
 
         // Keep track of IDs in the same order so we can
         // process clicks.
-        chart.assigneeIds = sortedNames.map(
-            function(k) { return workByAssignee[k].id; });
+        chart.filters = sortedLabels.map(
+            function(k) { return workByCategory[k].filter; });
         
-        chart.colors = sortedNames.map(
+        chart.colors = sortedLabels.map(
             function(k) {
-                if (! (k in colorByAssignee)) {
+                if (! (k in colorByLabel)) {
                     if (colors.length > 0) {
-                        colorByAssignee[k] = colors.shift();
+                        colorByLabel[k] = colors.shift();
                     }
                 }
-                return colorByAssignee[k];
+                return colorByLabel[k];
             });
 
         if (capacity > 0) {
@@ -365,22 +383,23 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
                 var estimates = issues.map(estimateFromIssue);
                 
                 // A hash indexed by display name.  Each element
-                // summarizes the work for that assignee.
-                var workByAssignee = {};
+                // summarizes the work for that category.
+                var workByCategory = {};
 
                 angular.forEach(estimates, function(e, index) {
-                    if (!workByAssignee.hasOwnProperty(e.assigneeName)) {
-                        workByAssignee[e.assigneeName] = {
+                    if (!workByCategory.hasOwnProperty(e.category)) {
+                        workByCategory[e.category] = {
                             work: 0,
                             issues: 0,
-                            id: e.assigneeId
+                            filter: e.filter,
+                            order: e.order
                         };
                     }
-                    workByAssignee[e.assigneeName].work += e.work;
-                    workByAssignee[e.assigneeName].issues++;
+                    workByCategory[e.category].work += e.work;
+                    workByCategory[e.category].issues++;
                 });
 
-                vm.charts[chartNum] = buildOneChart(workByAssignee,
+                vm.charts[chartNum] = buildOneChart(workByCategory,
                                                     releaseDateStr);
                 vm.charts[chartNum].query = query;
             }, function errorCallback(response) {
@@ -415,6 +434,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
 
         // Clear any data from previous submissions
         vm.charts = [];
+        resetColors();
 
         // Get the open releases for each project
         Jira.getProjectReleases(vm.projects)
@@ -470,30 +490,81 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         var chartNum = parseInt(htmlId.split('-')[1]);
 
         // The base URL: matches filter for the chart
-        // AND limited by assignee
         var url = "https://" + vm.domain + "/issues/"
-            + "?jql=" + vm.charts[chartNum].query
-            + " AND assignee";
+            + "?jql=" + vm.charts[chartNum].query;
+
+        // Add a bar-specific filter clause
+        url += " AND " + vm.charts[chartNum].filters[index];
         
-        var id = vm.charts[chartNum].assigneeIds[index];
-        // Add the rest of the assignee clause
-        if (id == "unassigned") {
-            url += " is empty";
-        } else {
-            url += "="+id;
-        }
         url += " ORDER BY fixVersion ASC, priority DESC"
         
         $window.open(url);
     }
 
+    var statusOrder = [
+        'Backlog',
+        'New',
+        'Ready',
+        'In Progress',
+        'Code Review Failed',
+        'Code Review',
+        'Code Review Passed',
+        'Dev QA',
+        'QA',
+        'QA Passed'
+    ];
+
+    var getStatus = function(issue) {
+        var status = {
+            name : issue.fields.status.name
+        }
+        
+        var index = statusOrder.indexOf(status.name);
+        status.order = index != -1 ? index : statusOrder.length;
+
+        return status;
+    };
+
+    // An estimate has four fields built from the issue
+    // * work - the remaining work in the issue
+    // * category - the label for the bar it will be displayed on
+    // * filter - a JQL filter clause which limits the chart filter to
+    //            the bar's issues.
+    // * order - the order that the bar should be displsyed in
     var estimateFromIssue = function(issue) {
-        var assignee = getAssignee(issue);
-        return {
-            assigneeId : assignee.id,
-            assigneeName : assignee.name,
-            work : getRemainingWork(issue)
+        var estimate = {
+            work : getRemainingWork(issue),
         };
+
+        switch (vm.barCategory) {
+        case 'assignee':
+        default:
+            var assignee = getAssignee(issue);
+            estimate.category = assignee.name;
+            estimate.filter = assignee.id == "unassigned"
+                ? "assignee is empty"
+                : "assignee = " + assignee.id;
+            estimate.order = assignee.name;
+            break;
+        case 'project':
+            estimate.category = issue.fields.project.name;
+            estimate.filter = "project = " + issue.fields.project.key;
+            estimate.order = issue.fields.project.name;
+            break;
+        case 'type':
+            estimate.category = issue.fields.issuetype.name;
+            estimate.filter = 'type = "' + issue.fields.issuetype.name + '"';
+            estimate.order = issue.fields.issuetype.name;
+            break;
+        case 'status':
+            var status = getStatus(issue);
+            estimate.category = status.name;
+            estimate.filter = 'status = "' + status.name + '"';
+            estimate.order = status.order;
+            break;
+        }
+
+        return estimate;
     }
         
     var getAssignee = function(issue) {

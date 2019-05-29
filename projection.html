@@ -63,6 +63,17 @@
     </div>
     <br>
     <div>
+      <label>Show by:</label>
+      <span ng-repeat="c in vm.categories">
+        <input id="cat-{{c}}"
+               type="radio"
+               name="cat"
+               value="{{c}}" ng-model="vm.barCategory"/>
+        <label for="cat-{{c}}">{{c}}</label>
+      </span>
+    </div>
+    <br>
+    <div>
       <label>Unit:</label>
       <span ng-repeat="u in vm.units">
         <input id="unit-{{u}}"
@@ -119,7 +130,7 @@
       <canvas id="bar-{{$index}}"
               class="chart chart-bar"
               chart-data="vm.charts[$index].work"
-              chart-labels="vm.charts[$index].assigneeNames"
+              chart-labels="vm.charts[$index].barLabels"
               chart-colors="vm.charts[$index].colors"
               chart-options="vm.charts[$index].options"
               chart-click="vm.onChartClick">
