@@ -402,19 +402,18 @@ var taskLib = (function() {
 
         // Helper to turn strings into numbers for comparing when scheduling.
         //
-        // map is a hash like:
-        //     var typeMap = {
-        //         "Bug" : 0,
-        //         "Task" : 1
-        //     };
+        // list is an array like:
+        //     var types = [ "Bug", "Task" ];
         //
-        // index is one of the strings.
+        // item is one of the strings.
         //
-        // Returns a hash like { "display" : index, "value" : 1 }
-        buildSchedulingField : function(map, index) {
+        // Returns a hash like { "display" : item, "value" : 1 }
+        // where value is the length of the list if item is not found
+        buildSchedulingField : function(list, item) {
+            var index = list.indexOf(item);
             return {
-                "display" : index,
-                "value" : index in map ? map[index] : Object.keys(map).length
+                "display" : item,
+                "value" : index != -1 ? index : list.length
             };
         },
 

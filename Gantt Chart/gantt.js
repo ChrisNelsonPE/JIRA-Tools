@@ -75,19 +75,19 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
     var predecessorLinkText = "is blocked by";
     var parentLinkTexts = ["is a task in the story", "is a subtask of"];
 
-    var typeMap = {
-        "Bug" : 0,
-        "Task" : 1
-    };
+    var typeOrder = [
+        "Bug",
+        "Task"
+    ];
 
-    var priorityMap = {
-        "Blocker" : 0,
-        "Critical" : 1,
-        "Major" : 2,
-        "Normal" : 3,
-        "Minor" : 4,
-        "Trivial" : 5
-    };
+    var priorityOrder = [
+        "Blocker",
+        "Critical",
+        "Major",
+        "Normal",
+        "Minor",
+        "Trivial"
+    ];
 
     
     // These functions are helpers for parsing Jira issues into tasks
@@ -222,11 +222,11 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
     };
 
     var taskType = function(issue) {
-        return taskLib.buildSchedulingField(typeMap, issue.fields.issuetype.name);
+        return taskLib.buildSchedulingField(typeOrder, issue.fields.issuetype.name);
     };
 
     var taskPriority = function(issue) {
-        return taskLib.buildSchedulingField(priorityMap, issue.fields.priority.name);
+        return taskLib.buildSchedulingField(priorityOrder, issue.fields.priority.name);
     };
 
     var taskFromJiraIssue = function(issue) {

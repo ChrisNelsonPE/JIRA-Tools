@@ -16,19 +16,19 @@ app.controller('MainCtrl', function($http, $q) {
     
     vm.defaultEstimateHours = 8;
 
-    var typeMap = {
-        "Bug" : 0,
-        "Task" : 1
-    };
+    var typeOrder = [
+        "Bug",
+        "Task"
+    ];
 
-    var priorityMap = {
-        "Blocker" : 0,
-        "Critical" : 1,
-        "Major" : 2,
-        "Normal" : 3,
-        "Minor" : 4,
-        "Trivial" : 5
-    };
+    var priorityOrder = [
+        "Blocker",
+        "Critical",
+        "Major",
+        "Normal",
+        "Minor",
+        "Trivial"
+    ];
 
     
     var taskColor = function(issue) {
@@ -120,8 +120,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 10,
                 "name" : "Test 1 - Resource leveling",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 10",
                 "after" : [],
                 "before": [],
@@ -131,8 +131,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 11,
                 "name" : "Task 2 - 1st by resource leveling",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 11",
                 "after" : [],
                 "before" : [],
@@ -144,8 +144,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 12,
                 "name" : "Task 3 - 2nd by resource leveling",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 11",
                 "after" : [],
                 "before" : [],
@@ -162,8 +162,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 20,
                 "name" : "Test 2 - Dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 20",
                 "after" : [],
                 "before" : [],
@@ -175,8 +175,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 21,
                 "name" : "Task 5 - 2nd by dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 21",
                 "after" : [ 22 ],
                 "before" : [ ],
@@ -188,8 +188,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 22,
                 "name" : "Task 6 - 1st by dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 22",
                 "after" : [ ],
                 "before" : [ 21 ],
@@ -206,8 +206,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 30,
                 "name" : "Test 3 - Two blocking one",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 30",
                 "after" : [],
                 "before" : [],
@@ -219,8 +219,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 31,
                 "name" : "Task 31 - 1st by ID",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 31",
                 "after" : [  ],
                 "before" : [ 33 ],
@@ -232,8 +232,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 32,
                 "name" : "Task 32 - 2nd, start with task 31",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 32",
                 "after" : [  ],
                 "before" : [ 33 ],
@@ -245,8 +245,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 33,
                 "name" : "Task 33 - 3rd by dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 33",
                 "after" : [ 31, 32 ],
                 "before" : [ ],
@@ -263,8 +263,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 40,
                 "name" : "Test 4 - One blocking two",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 40",
                 "after" : [],
                 "before" : [],
@@ -276,8 +276,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 41,
                 "name" : "Task 41 - 1st by dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 41",
                 "after" : [  ],
                 "before" : [ 42, 43 ],
@@ -289,8 +289,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 42,
                 "name" : "Task 42 - 2nd by ID",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 42",
                 "after" : [ 41 ],
                 "before" : [ ],
@@ -302,8 +302,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 43,
                 "name" : "Task 43 - 3rd by ID",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 43",
                 "after" : [ 41  ],
                 "before" : [ ],
@@ -320,8 +320,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 50,
                 "name" : "Test 5 - Effective priority",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 50",
                 "after" : [],
                 "before" : [],
@@ -333,8 +333,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 51,
                 "name" : "Task 51 - Low-priority group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Minor"),
                 "resource" : "Resource 51",
                 "after" : [  ],
                 "before" : [ ],
@@ -346,8 +346,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 52,
                 "name" : "Task 52 - 2nd by effective priority",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 52",
                 "after" : [  ],
                 "before" : [ ],
@@ -359,8 +359,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 53,
                 "name" : "Task 53 - High-priority group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Blocker"),
                 "resource" : "Resource 53",
                 "after" : [ ],
                 "before" : [ ],
@@ -372,8 +372,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 54,
                 "name" : "Task 54 - 1st by effective priority",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 52",
                 "after" : [  ],
                 "before" : [ ],
@@ -390,8 +390,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 60,
                 "name" : "Test 6 - Group blocks group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 60",
                 "after" : [],
                 "before" : [],
@@ -403,8 +403,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 61,
                 "name" : "Task 61 - 2nd group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Minor"),
                 "resource" : "Resource 61",
                 "after" : [ 63 ],
                 "before" : [ ],
@@ -416,8 +416,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 62,
                 "name" : "Task 62 - 2nd by group blocking",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 62",
                 "after" : [  ],
                 "before" : [ ],
@@ -429,8 +429,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 63,
                 "name" : "Task 63 1st group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Blocker"),
                 "resource" : "Resource 63",
                 "after" : [ ],
                 "before" : [ 61 ],
@@ -442,8 +442,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 64,
                 "name" : "Task 64 - 1st by group blocking",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 64",
                 "after" : [  ],
                 "before" : [ ],
@@ -460,8 +460,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 70,
                 "name" : "Test 7 - Group blocks task",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 70",
                 "after" : [],
                 "before" : [],
@@ -473,8 +473,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 71,
                 "name" : "Task 71 - 2nd group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Minor"),
                 "resource" : "Resource 71",
                 "after" : [  ],
                 "before" : [ ],
@@ -486,8 +486,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 72,
                 "name" : "Task 72 - 2nd by dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 72",
                 "after" : [ 73 ],
                 "before" : [  ],
@@ -499,8 +499,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 73,
                 "name" : "Task 73 1st group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Blocker"),
                 "resource" : "Resource 73",
                 "after" : [  ],
                 "before" : [ 72 ],
@@ -512,8 +512,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 74,
                 "name" : "Task 74 - 1st by dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 74",
                 "after" : [  ],
                 "before" : [ ],
@@ -530,8 +530,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 80,
                 "name" : "Test 8 - Task blocks group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 80",
                 "after" : [],
                 "before" : [],
@@ -543,8 +543,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 81,
                 "name" : "Task 81 - 2nd group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Minor"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Minor"),
                 "resource" : "Resource 81",
                 "after" : [ 84 ],
                 "before" : [ ],
@@ -556,8 +556,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 82,
                 "name" : "Task 82 - 2nd by dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 82",
                 "after" : [ ],
                 "before" : [  ],
@@ -569,8 +569,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 83,
                 "name" : "Task 83 1st group",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Blocker"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Blocker"),
                 "resource" : "Resource 83",
                 "after" : [  ],
                 "before" : [ ],
@@ -582,8 +582,8 @@ app.controller('MainCtrl', function($http, $q) {
             {
                 "id" : 84,
                 "name" : "Task 84 - 1st by dependency",
-                "type" : taskLib.buildSchedulingField(typeMap, "Bug"),
-                "priority" : taskLib.buildSchedulingField(priorityMap, "Major"),
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
                 "resource" : "Resource 84",
                 "after" : [ ],
                 "before" : [ 81 ],
