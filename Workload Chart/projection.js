@@ -207,58 +207,6 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         }
     };
 
-    // options is a hash of query options.
-    // * includeUnscheduled - also include releases without a release date
-    // * projects - a comma-delimited list of projects to search in
-    //   (only used if includeUnscheduled is true)
-    // * limitToGroup - only include issues assigned to group
-    // * group - Jira group to include issues for (only used if
-    //   limitToGroup is true)
-    //
-    // Returns a JQL query string
-    var buildReleaseIssuesQuery = function(options, releases) {
-        var scheduledClause = "";
-        var unscheduledClause = "";
-        
-        if (releases.length != 0) {
-            var releaseNames  = releases.map(function(r) {
-                return r.name;
-            });
-
-            // Always include the issues with fixVersion in the release list
-            scheduledClause = "fixVersion in ("
-                + "\"" + releaseNames.join('","') + "\""
-                + ")";
-        }
-
-        // Include issues without a fixVersion in the last chart.
-        // This relies on projects being well formed but we've used
-        // it already above so that's likely safe.
-        if (options.includeUnscheduled) {
-            unscheduledClause = "(fixVersion IS EMPTY"
-                + " AND project IN (" + options.projects + "))"
-        }
-
-        var query;
-        if (scheduledClause.length == 0) {
-            query = unscheduledClause;
-        }
-        else if (unscheduledClause.length == 0) {
-            query = scheduledClause;
-        }
-        else {
-            query = "(" + scheduledClause + " OR " + unscheduledClause + ")";
-        }
-
-        query += " AND statusCategory != Done";
-        if (options.limitToGroup && options.group.length > 0) {
-            query += " AND (assignee IN membersOf(" + options.group + ")"
-	        + " OR assignee IS Empty)";
-        }
-
-        return query;
-    };
-
     var buildOneChart = function(workByCategory, releaseDateStr) {
         var capacity = 0;
         if (releaseDateStr === undefined) {
@@ -374,9 +322,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
             group: vm.group
         };
         
-        var query = buildReleaseIssuesQuery(options, releases);
-
-        Jira.getIssues(query)
+        Jira.getReleaseIssues(options, releases)
             .then(function successCallback(issues) {
                 var estimates = issues.map(estimateFromIssue);
                 
