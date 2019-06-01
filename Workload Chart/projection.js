@@ -264,19 +264,17 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         if (releaseDateStr === undefined) {
             releaseDateStr = "No due date";
         }
-        else {
+        // FIXME - this clause is the only reference to vm in this function.
+        else if (vm.barCategory == 'assignee') {
             // This is likely off by GMT offset but it's close enough
             // for now.
             var releaseDate = Date.parse(releaseDateStr + 'T00:00:00Z');
             var today = Date.now();
+            // TODO - for non-cumulative charts, use 2 weeks (14 days)
             var daysRemaining = (releaseDate - today) / (24 * 60 * 60 * 1000);
             // Work days
             daysRemaining = (daysRemaining / 7) * 5;
-            if (vm.barCategory == 'assignee') {
-                capacity = daysRemaining * vm.burnRate;
-            }
-
-            releaseDateStr = new Date(releaseDate).toISOString().substring(0, 10);
+            capacity = daysRemaining * vm.burnRate;
         }
         
         var chart = {
