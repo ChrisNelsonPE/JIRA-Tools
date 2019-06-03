@@ -4,6 +4,7 @@
 <head>
   <script src="https://code.angularjs.org/1.5.8/angular.js"></script>
   <script src="shared/parameters.js"></script>
+  <link rel="stylesheet" type="text/css" href="shared/style.css" />
   <script src="Time Card/timeCard.js"></script>
   <link rel="stylesheet" href="Time Card/timeCard.css">
 </head>
@@ -11,8 +12,8 @@
 <body>
   <section ng-controller="MainCtrl as vm">
     <div ng-init="showCriteria=true" ng-click="showCriteria = ! showCriteria">
+      <div class='fold-button'>{{showCriteria ? "&#x2B9F;" : "&#x2B9E;"}}</div>
       <h1>
-        {{showCriteria ? "-" : "+"}}
         Jira Time
       </h1>
     </div>
