@@ -38,7 +38,7 @@ app.config(function($httpProvider) {
     $httpProvider.defaults.useXDomain = true;
 });
 
-app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
+app.controller('MainCtrl', function($window, $q, $location, Jira) {
     document.title = "Jira Projected Workload";
     var headlines = document.getElementsByTagName("h1");
     if (headlines.length > 0) {
@@ -358,8 +358,6 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
     }
 
     vm.submit = function() {
-        vm.apiUrl = "https://" + vm.domain + "/rest/api/2/";
-
         vm.credential = btoa(vm.userId + ":" + vm.password);
 
         Jira.config(vm.domain, vm.credential);
