@@ -135,6 +135,26 @@ var taskLib = (function() {
         }
     };
 
+    // Start/finish date origin predecence constant values
+    //
+    // Lower numbers are better.  That is, a due date on a task
+    // takes precedence over a date computed from dependencies.
+    // TracPM handled actual and scheduled times before task
+    // times.  This code does not.
+    var SF_LIMIT = 0         // Set by resource leveling
+    var SF_ACTUAL = 1        // ** Not used **
+    var SF_SCHEDULE = 2      // ** Not used **
+    var SF_TASK = 3          // From task
+    var SF_DEPENDENCIES = 4  // From previous/next tasks
+    var SF_PROJECT = 5       // From project start/finish
+    var SF_DEFAULT = 6       // Defaulted to today
+
+    // Based on https://stackoverflow.com/questions/11526504
+    // Divide by 10 to be ~27k years, not 271k.
+    var MAX_TIME = 864000000000000;
+    
+    var MS_PER_HOUR = 1000 * 60 * 60;
+    
     // Decorate tasks to make schedling easier
     var preSchedule = function(tasks, constraints) {
         var c = constraints;
@@ -154,9 +174,7 @@ var taskLib = (function() {
         }
 
         angular.forEach(tasks, function(task) {
-            // Based on https://stackoverflow.com/questions/11526504
-            // Divide by 10 to be ~27k years, not 271k.
-            task[c.to] = c.dir * -864000000000000;
+            task['calc_' + c.to] = [ c.dir * -MAX_TIME, SF_DEFAULT ];
             task.scheduled = false;
 
             // preds are the tasks which precede this one when
@@ -201,7 +219,7 @@ var taskLib = (function() {
     // Remove artifacts from added by preSchedule()
     var postSchedule = function(tasks, constraints) {
         var c = constraints;
-        constraints[c.to] = c.dir * -864000000000000;
+        constraints[c.to] = c.dir * -MAX_TIME;
 
         angular.forEach(tasks, function(task) {
             if (task.scheduled) {
@@ -211,9 +229,16 @@ var taskLib = (function() {
                 delete task.effectivePriority;
                 delete task.nBlocking;
 
-                if (c.dir * task[c.to] > c.dir * constraints[c.to]) {
-                    constraints[c.to] = task[c.to];
+                task[c.to] = task['calc_' + c.to][0];
+                task[c.from] = task['calc_' + c.from][0];
+
+                if (c.dir * task['calc_' + c.to][0]
+                    > c.dir * constraints[c.to]) {
+                    constraints[c.to] = task['calc_' + c.to][0];
                 }
+                
+                delete task['calc_' + c.to];
+                delete task['calc_' + c.from];
             }
             else {
                 console.log("Task " + task.id + " not scheduled.");
@@ -250,99 +275,258 @@ var taskLib = (function() {
         var hoursPerDay = constraints["hoursPerDay"];
         var available;
 
-        // Skip weekends
+        // No time available on weekends
         if (date.getDay() == 6 || date.getDay() == 0) {
             available = 0;
         }
         else {
-            // Outside working hours, no time available
-            if (date.getHours() > hoursPerDay) {
-                available = 0;
-            }
-            else {
-                available = c.dir * (c.eod - date.getHours());
-            }
+            available = hoursPerDay;
         }
         return available;
     };
 
-    // FUTURE - this doesn't consider due dates
-    var scheduleOneTask = function(task, tasks, constraints) {
-        //console.log("Scheduling " + task.id);
-        var c = constraints;
+    // Compute the number of milliseconds (positive or negative) to
+    // add to fromDate to account for hours of work, allowing for
+    // weekends, resource availablility, etc.
+    //
+    // c - constraints (hoursPerDay is used)
+    // t - task (resource is used)
+    // hours - number of hours (real or integer) to account for
+    // fromDate - millisecond representation of date to work from
+    var calendarOffset = function(c, t, hours, fromDate) {
+        var sign = (hours < 0) ? -1 : 1;
+        var delta = 0;
 
-        // Get the next time available for this resource.
-        if (nextByResource[task.resource]) {
-            task[c.from] = nextByResource[task.resource];
-        }
-        // If the resource hasn't been used yet and there is a start date
-        // use that.
-        else if (c.from in constraints) {
-            if (constraints[c.from] instanceof Date) {
-                task[c.from] = constraints[c.from].getTime();
+        while (hours != 0) {
+            var f = new Date(fromDate + delta);
+
+            // Get the total hours available for the resource on that date
+            var available = availableHours(f, t.resource, c);
+
+            // Convert 4:30 to 4.5, etc.
+            var h = f.getHours()
+                + (f.getMinutes() / 60.0)
+                + (f.getSeconds() / 3600.0);
+
+            if (sign == -1) {
+                if (h < available) {
+                    available = h;
+                }
             }
             else {
-                task[c.from] = constraints[c.from];
+                if (c.hoursPerDay - h < available) {
+                    available = c.hoursPerDay - h;
+                }
+            }
+
+            // If we can finish the task this day
+            if (available >= Math.abs(hours)) {
+                // See how many hours are available for other tasks this day
+                available += -1 * sign * hours;
+
+                // If there are no more hours this day, make sure that
+                // the delta ends up at the end (start or finish) of
+                // the day
+                if (available == 0) {
+                    if (sign == -1) {
+                        delta -= h * MS_PER_HOUR;
+                    }
+                    else {
+                        delta += (c.hoursPerDay - h) * MS_PER_HOUR;
+                    }
+                }
+                // If there is time left after this, just update delta
+                // within this day
+                else {
+                    delta += hours * MS_PER_HOUR;
+                }
+
+                // No hours left when we're done
+                hours = 0;
+            }
+            // If we can't finish the task this day
+            else {
+                // We do available hours of work this day...
+                hours -= sign * available;
+
+                // ... And move to another day to do more.
+                if (sign == -1) {
+                    // Account for the time worked this date (that is,
+                    // get to the start of the day)
+                    delta -= h * MS_PER_HOUR;
+                    // Back up to the end of the previous day
+                    delta -= (24 - c.hoursPerDay) * MS_PER_HOUR;
+                }
+                else {
+                    // Account for the time worked this day (that is,
+                    // move to the end of today)
+                    delta += (c.hoursPerDay - h) * MS_PER_HOUR;
+                    // Move ahead to the start of the next day
+                    delta += (24 - c.hoursPerDay) * MS_PER_HOUR;
+                }
+                // TODO - Could move both end/start of day calculations here as
+                // delta += sign * (24 - c.hoursPerDay) * MS_PER_HOUR
+            }
+        }
+
+        return delta;
+    }
+
+    // Adjust date to skip non-working hours.
+    var wrapDate = function(c, date) {
+        var d = new Date(date);
+        if (c.dir == -1) {
+            if (d.getHours() == 0 && d.getMinutes() == 0) {
+                date -= (24 - c.hoursPerDay) * MS_PER_HOUR;
             }
         }
         else {
-            console.log("No " + c.from + " date specified.");
-            return;
-        }
-
-        // ASAP: This task can't start earlier than any of its
-        // predecessor's finishes.
-        // ALAP: This task can't finish later than any of its
-        // successors's starts.
-        angular.forEach(task["preds"], function(id) {
-            if (c.dir * tasks[id][c.to] > c.dir * task[c.from]) {
-                task[c.from] = tasks[id][c.to];
+            if (d.getHours() == c.hoursPerDay && d.getMinutes() == 0) {
+                date += (24 - c.hoursPerDay) * MS_PER_HOUR;
             }
-        });
-
-        var d = new Date(task[c.from]);
-
-        // Adjust end of day to start of next (ASAP) or start of day
-        // to end of previous (ALAP)
-        if (d.getHours() == c.eod) {
-            d.setDate(d.getDate() + (c.dir * 1));
-            d.setHours(c.sod);
         }
+        return date;
+    };
 
-        task[c.from] = d.getTime();
+    var logDate = function(msg, date) {
+        var d;
+        if (date instanceof Date) {
+            d = date;
+        }
+        else {
+            d = new Date(date);
+        }
+        console.log(msg + ": " + d);
+    };
 
-        // Loop until available hours by day is enough to
-        // accomplish remaining hours.
-        var remainingHours = task.remainingHours;
-        while (remainingHours > 0) {
-            var available = availableHours(d, task.resource, constraints);
-            if (available >= remainingHours) {
-                d.setHours(d.getHours() + (c.dir * remainingHours));
-                remainingHours = 0;
+    var scheduleOneTask = function(task, tasks, constraints) {
+        //console.log("Scheduling " + task.id);
+        var c = constraints;
+        var from, to;
+
+        if (c.from in task) {
+            from = task[c.from] instanceof Date
+                ? task[c.from].getTime()
+                : task[c.from];
+            logDate("Task " + task.id + " had " + c.from + " date", from);
+            task['calc_' + c.from] = [ from, SF_TASK ];
+        }
+        else {
+            // Find latest predecessor's finish (ASAP) or earliest
+            // successor's start (ALAP)
+            from = undefined;
+            angular.forEach(task["preds"], function(id) {
+                if (from == undefined
+                    || c.dir * tasks[id]['calc_' + c.to][0] > from) {
+                    from = tasks[id]['calc_' + c.to][0];
+                }
+            });
+            // If dependencies give a date, use it.
+            if (from != undefined) {
+                from = wrapDate(c, from);
+                logDate("Task " + task.id + " " + c.from + " from deps", from);
+                task['calc_' + c.from] = [ from, SF_DEPENDENCIES ];
+            }
+            // Dependencies don't matter, use the project date
+            else if (c.from in constraints) {
+                if (constraints[c.from] instanceof Date) {
+                    from = constraints[c.from].getTime();
+                }
+                else {
+                    from = constraints[c.from];
+                }
+                logDate("Task " + task.id + " " + c.from + " from proj", from);
+                task['calc_' + c.from] = [ from, SF_PROJECT ];
             }
             else {
-                remainingHours -= available;
-                d.setDate(d.getDate() + (c.dir * 1));
-                d.setHours(c.dir == 1 ? 0 : constraints["hoursPerDay"]);
+                // FIXME - use today?
+                console.log("No " + c.from + " date specified.");
+                return;
+            }
+
+        }
+
+        // If there is a resource, get the next time available for it
+        if (task.resource != undefined && nextByResource[task.resource]) {
+            from = task['calc_' + c.from][0];
+            if (c.dir * from < c.dir * nextByResource[task.resource]) {
+                task['calc_' + c.from] =
+                    [ nextByResource[task.resource], SF_LIMIT ];
+                logDate("Task " + task.id + " " + c.from
+                        + " updated from resource " + task.resource,
+                        nextByResource[task.resource]);
             }
         }
-        task[c.to] = d.getTime();
+
+        // If the task has a to date, use it
+        if (c.to in task) {
+            to = task[c.to] instanceof Date ? task[c.to].getTime() : task[c.to];
+            logDate("Task " + task.id + " had " + c.to + " date", to);
+            task['calc_' + c.to] = [ to, SF_TASK ];
+        }
+        // Otherwise, the to date is based on the from date and the
+        // work to be done
+        else {
+            to = task['calc_' + c.from][0]
+                + calendarOffset(c,
+                                 task,
+                                 task.remainingHours,
+                                 task['calc_' + c.from][0]);
+            
+            logDate("Task " + task.id + " " + c.to
+                    + " set from " + c.from
+                    + " plus " + task.remainingHours + " hours' work",
+                    to);
+            task['calc_' + c.to] = [ to, task['calc_' + c.from][1]];
+        }
+
+        // If from's precedence is better (lower) than to's,
+        // update to based on from and remaining hours.
+        if (task['calc_' + c.from][1] < task['calc_' + c.to][1]) {
+            to = task['calc_' + c.from][0]
+                + calendarOffset(c,
+                                 task,
+                                 task.remainingHours,
+                                 task['calc_' + c.from][0]);
+            logDate("Task " + task.id + " " + c.to
+                    + " updated from " + c.from
+                    + " plus " + task.remainingHours + " hours' work",
+                    to);
+            task['calc_' + c.to] = [ to, task['calc_' + c.from][1]];
+        }
+        // If from's precedence is worse (higher) than to's,
+        // update from based on to and remaining hours.
+        else if (task['calc_' + c.from][1] > task['calc_' + c.to][1]) {
+            from = task['calc_' + c.to][0]
+                + calendarOffset(c,
+                                 task,
+                                 -task.remainingHours,
+                                 task['calc_' + c.to][0]);
+            logDate("Task " + task.id + " " + c.from
+                    + " updated from " + c.to
+                    + " minus " + task.remainingHours + " hours' work",
+                    from);
+            task['calc_' + c.from] = [ from, task['calc_' + c.to][1]];
+        }
+            
 
         // Propagate end up to ancestors;
         for (var parentId = task.parent;
              parentId != taskLib.noParent;
              parentId = tasks[parentId].parent) {
-            if (typeof tasks[parentId][c.from] === "undefined"
-                || c.dir * tasks[parentId][c.from] > c.dir * task[c.from]) {
-                tasks[parentId][c.from] = task[c.from];
+            if (typeof tasks[parentId]['calc_' + c.from] === "undefined"
+                || c.dir * tasks[parentId]['calc_' + c.from][0]
+                > c.dir * task['calc_' + c.from][0]) {
+                tasks[parentId]['calc_' + c.from] = task['calc_' + c.from];
             }
-            if (typeof tasks[parentId][c.to] === "undefined"
-                || c.dir * tasks[parentId][c.to] < c.dir * task[c.to]) {
-                tasks[parentId][c.to] = task[c.to];
+            if (typeof tasks[parentId]['calc_' + c.to] === "undefined"
+                || c.dir * tasks[parentId]['calc_' + c.to][0]
+                < c.dir * task['calc_' + c.to][0]) {
+                tasks[parentId]['calc_' + c.to] = task['calc_' + c.to];
             }
         }
 
-        nextByResource[task.resource] = task[c.to];
+        nextByResource[task.resource] = wrapDate(c, task['calc_' + c.to][0]);
     };
 
     var compareOneField = function(t1, t2, field) {
