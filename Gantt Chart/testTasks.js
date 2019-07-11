@@ -18,7 +18,8 @@ app.controller('MainCtrl', function($http, $q) {
 
     var typeOrder = [
         "Bug",
-        "Task"
+        "Task",
+        "Milestone"
     ];
 
     var priorityOrder = [
@@ -595,6 +596,196 @@ app.controller('MainCtrl', function($http, $q) {
         ]);
     };
 
+    var addTest9 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 90,
+                "name" : "Test 9 - Float",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 90",
+                "after" : [],
+                "before": [],
+                "parent" : taskLib.noParent,  "children" : [91, 92],
+                "workedHours" : 10, "remainingHours" : 20
+            },
+            {
+                "id" : 91,
+                "name" : "Task 91 - Starts at start of project",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 91",
+                "after" : [],
+                "before" : [ 92 ],
+                "parent" : 90,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 92,
+                "name" : "Task 92 - Starts at fixed date, after float",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 91",
+                "after" : [ 91 ],
+                "before" : [],
+                "parent" : 90,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 10,
+                "start" : new Date(2019,0,15),
+            }
+        ]);
+    };
+
+
+    var addTest10 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 100,
+                "name" : "Test 10 - Following fixed",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 100",
+                "after" : [],
+                "before": [],
+                "parent" : taskLib.noParent,  "children" : [ 101, 102],
+                "workedHours" : 10, "remainingHours" : 20
+            },
+            {
+                "id" : 101,
+                "name" : "Task 101 - 2nd after fixed task",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 101",
+                "after" : [ 102 ],
+                "before" : [ ],
+                "parent" : 100,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 102,
+                "name" : "Task 102 - 1st on fixed date",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 101",
+                "after" : [  ],
+                "before" : [ 101 ],
+                "parent" : 100,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 10,
+                "start" : new Date(2019,0,9),
+            }
+        ]);
+    };
+
+
+    var addTest11 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 110,
+                "name" : "Test 11 - Negative float; 1st finishes late",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 110",
+                "after" : [],
+                "before": [],
+                "parent" : taskLib.noParent,  "children" : [ 111, 112],
+                "workedHours" : 11, "remainingHours" : 20
+            },
+            {
+                "id" : 111,
+                "name" : "Task 111 - 2nd on fixed date",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 111",
+                "after" : [ 112 ],
+                "before" : [ ],
+                "parent" : 110,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20,
+                "start" : new Date(2019,0,11),
+            },
+            {
+                "id" : 112,
+                "name" : "Task 112 - 1st at start of project",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 112",
+                "after" : [  ],
+                "before" : [ 111 ],
+                "parent" : 110,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 25
+            }
+        ]);
+    };
+
+    var addTest12 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 120,
+                "name" : "Test 12 - Two requirements for milestone",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 120",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 121, 122, 123 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 121,
+                "name" : "Task 121 - 1st by ID",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 121",
+                "after" : [  ],
+                "before" : [ 123 ],
+                "parent" : 120,
+                "children" : [],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 122,
+                "name" : "Task 122 - 2nd, start with task 121",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 122",
+                "after" : [  ],
+                "before" : [ 123 ],
+                "parent" : 120,
+                "children" : [],
+                "workedHours" : 5,
+                "remainingHours" : 10
+            },
+            {
+                "id" : 123,
+                "name" : "Task 123 - Milestone",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Milestone"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 123",
+                "after" : [ 121, 122 ],
+                "before" : [ ],
+                "parent" : 120,
+                "children" : [],
+                "milestone" : true,
+                "finish" : new Date(2019,0,16),
+                "workedHours" : 10,
+                "remainingHours" : 0
+            }
+        ]);
+    };
+
 
     var tasks = {};
 
@@ -606,6 +797,10 @@ app.controller('MainCtrl', function($http, $q) {
     addTest6(tasks);
     addTest7(tasks);
     addTest8(tasks);
+    addTest9(tasks);
+    addTest10(tasks);
+    addTest11(tasks);
+    addTest12(tasks);
 
     // var here causes scoping problems, at least inside Angular.
     g = new JSGantt.GanttChart('g',document.getElementById('GanttChartDIV'), 'day',1);
