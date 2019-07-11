@@ -17,7 +17,7 @@
 //   * remainingHours - hours the task should take to complete
 //   * workedHours - hours worked on the task so far
 // * Computed
-//   * start - numeric value for start date (from Data.getTime())
+//   * start - numeric value for start date (from Date.getTime())
 //   * finish - numeric value for finish date
 //
 // Applications may put values in the hash "data" for their own purposes
