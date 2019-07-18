@@ -786,6 +786,105 @@ app.controller('MainCtrl', function($http, $q) {
         ]);
     };
 
+    var addTest13 = function(tasks) {
+        addTestTasks(tasks, [
+            {
+                "id" : 130,
+                "name" : "Test 13 - Sorting tasks and milestones",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 130",
+                "after" : [],
+                "before" : [],
+                "parent" : taskLib.noParent,
+                "children" : [ 131, 132, 133, 134, 135, 136 ],
+                "workedHours" : 10,
+                "remainingHours" : 20
+            },
+            {
+                "id" : 131,
+                "name" : "Task 131 - 1st task in 1st release",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 131",
+                "after" : [  ],
+                "before" : [ 132, 133 ],
+                "parent" : 130,
+                "children" : [],
+                "workedHours" : 5,
+                "remainingHours" : 7
+            },
+            {
+                "id" : 132,
+                "name" : "Task 132 - 2nd task in 1st release",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 132",
+                "after" : [ 131 ],
+                "before" : [ 133 ],
+                "parent" : 130,
+                "children" : [],
+                "workedHours" : 5,
+                "remainingHours" : 7
+            },
+            {
+                "id" : 133,
+                "name" : "Task 133 - 1st Milestone",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Milestone"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 133",
+                "after" : [ 131, 132 ],
+                "before" : [ ],
+                "parent" : 130,
+                "children" : [],
+                "milestone" : true,
+                "finish" : new Date(2019,0,11),
+                "workedHours" : 10,
+                "remainingHours" : 0
+            },
+            {
+                "id" : 134,
+                "name" : "Task 134 - 1st task in 2nd release",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Bug"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 134",
+                "after" : [  ],
+                "before" : [ 136 ],
+                "parent" : 130,
+                "children" : [],
+                "workedHours" : 5,
+                "remainingHours" : 7
+            },
+            {
+                "id" : 135,
+                "name" : "Task 135 - 2nd task in 2nd release",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Task"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 134",
+                "after" : [ ],
+                "before" : [ 136 ],
+                "parent" : 130,
+                "children" : [],
+                "workedHours" : 5,
+                "remainingHours" : 7
+            },
+            {
+                "id" : 136,
+                "name" : "Task 136 - 2nd Milestone",
+                "type" : taskLib.buildSchedulingField(typeOrder, "Milestone"),
+                "priority" : taskLib.buildSchedulingField(priorityOrder, "Major"),
+                "resource" : "Resource 136",
+                "after" : [ 134, 135 ],
+                "before" : [ ],
+                "parent" : 130,
+                "children" : [],
+                "milestone" : true,
+                "finish" : new Date(2019,0,16),
+                "workedHours" : 10,
+                "remainingHours" : 0
+            }
+        ]);
+    };
 
     var tasks = {};
 
@@ -801,6 +900,7 @@ app.controller('MainCtrl', function($http, $q) {
     addTest10(tasks);
     addTest11(tasks);
     addTest12(tasks);
+    addTest13(tasks);
 
     // var here causes scoping problems, at least inside Angular.
     g = new JSGantt.GanttChart('g',document.getElementById('GanttChartDIV'), 'day',1);
@@ -831,9 +931,30 @@ app.controller('MainCtrl', function($http, $q) {
 
     g.setDateInputFormat("yyyy-mm-dd"); // ISO
     
+    // Mark each task with the date of earliest milestone it is required for
+    angular.forEach(tasks, function(task) {
+        if (task.milestone) {
+            console.log("Propagating release date for " + task.id);
+            var toMark = [ task.id ];
+            while (toMark.length != 0) {
+                var next = tasks[toMark.pop()];
+                if (!("milestoneDate" in next)
+                    || next.milestoneDate > task.finish) {
+                    next.milestoneDate = task.finish;
+                }
+                toMark = toMark.concat(Array.from(next.after));
+            }
+        }
+    });
+
+    // Compare tasks first by milestone date then by start
+    var compareTasks = function(t1, t2) {
+        return taskLib.compareByFields(t1, t2, "milestoneDate", "start");
+    };
+
     taskLib.wbsVisit(tasks, function(tasks, key) {
         addTaskToChart(g, tasks[key]);
-    }, taskLib.compareStart);
+    }, compareTasks);
     
     g.Draw();        
     g.DrawDependencies();
