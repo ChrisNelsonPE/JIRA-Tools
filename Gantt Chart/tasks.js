@@ -529,18 +529,6 @@ var taskLib = (function() {
         nextByResource[task.resource] = wrapDate(c, task['calc_' + c.to][0]);
     };
 
-    var compareOneField = function(t1, t2, field) {
-        if (t1[field] < t2[field]) {
-            return -1;
-        }
-        else if (t1[field] > t2[field]) {
-            return 1;
-        }
-        else {
-            return 0;
-        }
-    };
-
     return {
         // An unused ID
         noParent : 0,
@@ -580,8 +568,24 @@ var taskLib = (function() {
             }
         },
         
+        compareByFields : function(t1, t2, ...fieldNames) {
+            var field = fieldNames.shift();
+            if (t1[field] < t2[field]) {
+                return -1;
+            }
+            else if (t1[field] > t2[field]) {
+                return 1;
+            }
+            else if (fieldNames.length == 0) {
+                return 0;
+            }
+            else {
+                return this.compareByFields(t1, t2, fieldNames);
+            }
+        },
+
         compareStart : function(t1, t2) {
-            return compareOneField(t1, t2, "start");
+            return this.compareByFields(t1, t2, "start");
         },
 
         // Helper to turn strings into numbers for comparing when scheduling.
