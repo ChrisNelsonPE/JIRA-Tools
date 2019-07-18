@@ -57,7 +57,7 @@ app.controller('MainCtrl', function($http, $q) {
             return 1;
         }
         // Larger duration first
-        else if (t1duration < t2.duration) {
+        else if (t1duration < t2duration) {
             return 1;
         }
         else if (t1duration > t2duration) {
