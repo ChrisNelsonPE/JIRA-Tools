@@ -174,6 +174,7 @@ var taskLib = (function() {
         }
 
         angular.forEach(tasks, function(task) {
+            // FIXME - not sure if SF_DEFAULT is right
             task['calc_' + c.to] = [ c.dir * -MAX_TIME, SF_DEFAULT ];
             task.scheduled = false;
 
