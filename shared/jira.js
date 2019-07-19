@@ -126,6 +126,26 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
         return deferred.promise;
     };
 
+    // Get releases for one or more issues
+    //
+    // issues - an array of issues like that returned from getIssues()
+    //
+    // Returns an array of releases for all the listed issues
+    jira.getIssueReleases = function(issues) {
+        var releases = {};
+
+        issues.map(function(issue) {
+            issue.fields.fixVersions.map(function(fixVersion) {
+                if (!releases.hasOwnProperty(fixVersion.id)) {
+                    releases[fixVersion.id] = fixVersion;
+                }
+            });
+        });
+
+        return Object.keys(releases)
+            .map(function(id) { return releases[id]; });
+    };
+
     // Add custom fields to the list managed by the service.
     //
     // fields - a hash of custom field names indexed by "simple" names

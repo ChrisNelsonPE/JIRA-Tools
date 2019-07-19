@@ -77,7 +77,8 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
 
     var typeOrder = [
         "Bug",
-        "Task"
+        "Task",
+        "Milestone"
     ];
 
     var priorityOrder = [
@@ -88,6 +89,10 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         "Minor",
         "Trivial"
     ];
+
+    // Make sure that the IDs used for releases don't collide with
+    // those used for issues.
+    var milestoneIdOffset = 1000000000;
 
     
     // These functions are helpers for parsing Jira issues into tasks
@@ -240,7 +245,8 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
             "link" : "https://" + vm.domain
                 + "/browse/"+ issue.key
                 + "?filter="+ vm.filterNumber,
-            "epic" : issue.fields[epicLinkField]
+            "epic" : issue.fields[epicLinkField],
+            "fixVersions" : issue.fields.fixVersions
         }
         
         // Simple stuff
@@ -249,7 +255,7 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         
         // TODO - status? Add to name?
         
-        task.milestone = false; // Don't have milestones in Jira
+        task.milestone = false; // Just a task
 
         // Some computed/dependent stuff
         task.type = taskType(issue);
@@ -275,6 +281,54 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         return task;
     };
 
+    var taskFromRelease = function(release) {
+        var task = {};
+
+        // A few issue fields we want to carry around with the
+        // task.  taskLib ignores this.
+        task.data = {
+            "key" : release.name,
+            "link" : release.self, // FIXME - build something useful
+            "epic" : "",
+            "fixVersions" : []
+        }
+        
+        // Simple stuff
+        task.id = milestoneIdOffset + parseInt(release.id);
+        task.name = release.name; // TODO - add description if not empty
+        
+        task.milestone = true; // Jira releases are milestones in our chart
+
+        task.type = taskLib.buildSchedulingField(typeOrder, "Milestone");
+        task.priority = taskLib.buildSchedulingField(priorityOrder, "Trivial");
+
+        // Don't do resource leveling on milestones.
+        task.resource = undefined;
+        
+        [task.after, task.parent, task.children, task.before] =
+            [ new Set([]), taskLib.noParent, new Set([]), new Set([]) ]; 
+
+        task.workedHours = 0;
+        task.remainingHours = 0;
+        task.durationHours = 0;
+
+        if (release.hasOwnProperty('releaseDate')) {
+            task.finish = new Date(release.releaseDate).getTime();
+        }
+
+        return task;
+    };
+
+    var linkReleases = function(tasks) {
+        angular.forEach(tasks, function(task) {
+            angular.forEach(task.data.fixVersions, function(fixVersion) {
+                var releaseId = milestoneIdOffset + parseInt(fixVersion.id);
+                tasks[releaseId].after.add(task.id);
+                tasks[task.id].before.add(releaseId);
+            });
+        });
+    };
+    
     // Look up epic keys to get IDs.  This has to be a post-processing step
     // because tasks may not include the epic as task is first converted.
     var resolveEpics = function(tasks) {
@@ -410,6 +464,11 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         }
     }
 
+    // Compare tasks first by milestone date then by start
+    var compareForAdd = function(t1, t2) {
+        return taskLib.compareByFields(t1, t2, "milestoneDate", "start");
+    };
+
     vm.submit = function() {
         vm.credential = btoa(vm.userId + ":" + vm.password);
 
@@ -447,7 +506,13 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
                 // window open with browser/user defaults.
                 g.setPopupFeatures('scrollbars=1');
 
-                var tasks = hashFromArray(issues.map(taskFromJiraIssue), "id");
+                var taskArray = issues.map(taskFromJiraIssue);
+                var releases = Jira.getIssueReleases(issues);
+                taskArray = taskArray.concat(releases.map(taskFromRelease));
+
+                var tasks = hashFromArray(taskArray, "id");
+
+                linkReleases(tasks);
 
                 resolveEpics(tasks);
                 
@@ -460,12 +525,29 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
 
                 if (true) {
                     g.setDateInputFormat("yyyy-mm-dd"); // ISO
-                    
+		    
+		    // Mark each task with the date of earliest
+		    // milestone it is required for
+		    angular.forEach(tasks, function(task) {
+			if (task.milestone) {
+			    var toMark = [ task.id ];
+			    while (toMark.length != 0) {
+				var next = tasks[toMark.shift()];
+				if (!("milestoneDate" in next)
+				    || next.milestoneDate > task.finish) {
+				    next.milestoneDate = task.finish;
+				}
+				toMark = toMark.concat(Array.from(next.after));
+			    }
+			}
+		    });
+
                     taskLib.wbsVisit(tasks,
                                      function(tasks, key) {
                                          addTaskToChart(g, tasks[key]);
                                      },
-                                     taskLib.compareStart);
+                                     compareForAdd);
+					 
                 }
                 else {
                     addSampleTasks(g);
