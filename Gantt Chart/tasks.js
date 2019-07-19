@@ -555,7 +555,7 @@ var taskLib = (function() {
             };
 
             var roots = Object.filter(tasks, task => task.parent == taskLib.noParent);
-            var queue = Object.keys(roots);
+            var queue = Object.keys(roots).sort(compareIds);
             while (queue.length != 0) {
                 // Remove the task id at the head of the queue
                 id = queue.shift();
