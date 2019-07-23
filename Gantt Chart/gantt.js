@@ -256,6 +256,7 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         // TODO - status? Add to name?
         
         task.milestone = false; // Just a task
+        task.milestoneDate = Number.MAX_SAFE_INTEGER;
 
         // Some computed/dependent stuff
         task.type = taskType(issue);
@@ -355,7 +356,14 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
     // priority before low, etc.
     // FUTURE - can this be data driven?  Put in task lib?
     var compareTasks = function(t1, t2) {
-        if (t1.type.value < t2.type.value) {
+        // If t1 is due earlier, it has to be started first
+        if (t1.milestoneDate < t2.milestoneDate) {
+            return -1
+        }
+        else if (t1.milestoneDate > t2.milestoneDate) {
+            return 1;
+        }
+        else if (t1.type.value < t2.type.value) {
             return -1;
         }
         else if (t1.type.value > t2.type.value) {
@@ -521,6 +529,22 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
 
                 resolveEpics(tasks);
                 
+                // Mark each task with the date of earliest
+                // milestone it is required for
+                angular.forEach(tasks, function(task) {
+                    if (task.milestone) {
+                        var toMark = [ task.id ];
+                        while (toMark.length != 0) {
+                            var next = tasks[toMark.shift()];
+                            if (!("milestoneDate" in next)
+                                || next.milestoneDate > task.finish) {
+                                next.milestoneDate = task.finish;
+                            }
+                            toMark = toMark.concat(Array.from(next.after));
+                        }
+                    }
+                });
+
                 taskLib.scheduleTasks(tasks,
                                       compareTasks,
                                       {
@@ -531,22 +555,6 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
                 if (true) {
                     g.setDateInputFormat("yyyy-mm-dd"); // ISO
 		    
-		    // Mark each task with the date of earliest
-		    // milestone it is required for
-		    angular.forEach(tasks, function(task) {
-			if (task.milestone) {
-			    var toMark = [ task.id ];
-			    while (toMark.length != 0) {
-				var next = tasks[toMark.shift()];
-				if (!("milestoneDate" in next)
-				    || next.milestoneDate > task.finish) {
-				    next.milestoneDate = task.finish;
-				}
-				toMark = toMark.concat(Array.from(next.after));
-			    }
-			}
-		    });
-
                     taskLib.wbsVisit(tasks,
                                      function(tasks, key) {
                                          addTaskToChart(g, tasks[key]);
