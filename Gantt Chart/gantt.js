@@ -287,10 +287,12 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         // A few issue fields we want to carry around with the
         // task.  taskLib ignores this.
         task.data = {
-            "key" : release.name,
-            "link" : release.self, // FIXME - build something useful
-            "epic" : "",
-            "fixVersions" : []
+            'key' : release.name,
+            'link' : encodeURI('https://' + vm.domain
+                               + '/issues/'  
+                               + '?jql=fixVersion="' + release.name + '"'), 
+            'epic' : '',
+            'fixVersions' : []
         }
         
         // Simple stuff
