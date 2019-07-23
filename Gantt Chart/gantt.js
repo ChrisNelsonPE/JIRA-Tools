@@ -295,7 +295,10 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         
         // Simple stuff
         task.id = milestoneIdOffset + parseInt(release.id);
-        task.name = release.name; // TODO - add description if not empty
+        task.name = release.name
+            + (release.description.length == 0
+               ? ""
+               : ": " + release.description);
         
         task.milestone = true; // Jira releases are milestones in our chart
 
