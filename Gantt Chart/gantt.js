@@ -298,6 +298,7 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         
         // Simple stuff
         task.id = milestoneIdOffset + parseInt(release.id);
+        // description is undefined if not set
         task.name = release.name
             + (release.description.length == 0
                ? ""
