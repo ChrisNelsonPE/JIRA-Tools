@@ -154,7 +154,7 @@ def notify_release(release):
 
 
     # Message based on release calendar
-    for limit in limits:
+    for limit in sorted (limits.keys()):
         if days_to_release <= limit:
             notify_step(releaseDate, limit, limits[limit])
 
