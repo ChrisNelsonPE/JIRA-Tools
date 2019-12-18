@@ -118,6 +118,10 @@ def get_project_releases(project_name):
 
 def notify_step(releaseDate, days_to_release, description):
     deadline = releaseDate + timedelta(days = -days_to_release)
+    
+    if (deadline == date.today()):
+        deadline = 'TODAY'
+
     print('  {0} {1}'.format(deadline, description))
     
 
