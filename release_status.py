@@ -29,6 +29,10 @@ parser.add_argument("-c", "--credential",
                     default=os.environ["HOME"] + "/.jiraCredential",
                     help="File containing HTTP basic authentication token")
 
+parser.add_argument("-l", "--lookahead",
+                    type=int, default=15,
+                    help="How many days to look ahead")
+
 args = parser.parse_args()
 
 
@@ -134,7 +138,7 @@ def notify_release(release):
 
     days_to_release = delta.days
     
-    if days_to_release >= 15:
+    if days_to_release >= args.lookahead:
         return
 
     if days_to_release < 0:
