@@ -38,11 +38,13 @@ shenanigans because Jira doesn't do CORS correctly.
 https://www.moreofless.co.uk/static-content-web-pages-images-tomcat-outside-war/.
 Specifically:
 
+```
   $ diff server.xml-orig server.xml
   99c99
   <
   ---
   >                 <Context docBase="/opt/jiratools" path="/static" />
+```
 
 4. Access at `https:jira.yourdomain.local/static/` adding `timecard.html`, `projection.html`, etc.
 
