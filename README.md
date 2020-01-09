@@ -24,6 +24,30 @@ clears the local storage.
 
 ### How do I get set up? ###
 
+These tools are best used when installed as static content in the same
+Tomcat instance used to host your Jira Server.  If you are using Jira
+Cloud they can be used from a local clone but require some browser
+shenanigans because Jira doesn't do CORS correctly.
+
+#### Jira Server Setup
+
+1. Clone this repo
+2. Copy the files to /opt/jiratools/ on your Jira server
+3. Add an additional Context added to
+/opt/atlassian/jira/conf/server.xml as described at
+https://www.moreofless.co.uk/static-content-web-pages-images-tomcat-outside-war/.
+Specifically:
+
+  $ diff server.xml-orig server.xml
+  99c99
+  <
+  ---
+  >                 <Context docBase="/opt/jiratools" path="/static" />
+
+4. Access at `https:jira.yourdomain.local/static/` adding `timecard.html`, `projection.html`, etc.
+
+#### Local use for Jira Cloud
+
 * This is only known to work with Chrome
 
 1. Clone this repo
