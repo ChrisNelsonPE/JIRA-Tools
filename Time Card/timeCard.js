@@ -91,12 +91,15 @@ app.controller('MainCtrl', function($http, $q, $location) {
         // paging but for now let's just ask for a lot of issues.
         url += "?maxResults=1000";
 
+        // TODO - limit the fields we ask for
+
         // The filter should limit whose work is returned without a
         // time limit like "worklogAuthor = currentUser()" or
         // "worklogAuthor in membersOf(myGroup)"
         url += "&jql=filter=" + vm.filterNumber;
 
         // Add a date limit
+        // TODO - Jira filters can use startOfDay(), etc.
         var sop = startOfPeriod(new Date(Date.now()), vm.scale, vm.offset);
         url += " and worklogDate >=" + sop.toISOString().substring(0,10);
 
@@ -195,6 +198,8 @@ app.controller('MainCtrl', function($http, $q, $location) {
     var getIssueWork = function(issue) {
         var key = issue.key;
 
+        // NOTE: This end point doesn't allow filtering so we get all
+        // the worklogs and only process those we care about below.
         $http({
             url: vm.apiUrl+"issue/"+key+"/worklog",
             method: "GET",

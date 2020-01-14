@@ -25,12 +25,15 @@
 
 <body>
   <section ng-controller="MainCtrl as vm">
+    <!-- What if I saved showCriteria as a parameter so that the page loaded
+         with the last state? -->
     <div ng-init="showCriteria=true" ng-click="showCriteria = ! showCriteria">
       <div class='fold-button'>{{showCriteria ? "&#x2B9F;" : "&#x2B9E;"}}</div>
       <h1>
         Jira Projected Workload
       </h1>
     </div>
+    <br>
     <div ng-show="showCriteria">
     <div>
       <label>Jira Domain:</label>
@@ -64,6 +67,8 @@
     </div>
     <br>
     <div>
+      <!-- Call interlock function to disable burn rate unless
+           this is assignee -->
       <label>Show by:</label>
       <span ng-repeat="c in vm.categories">
         <input id="cat-{{c}}"

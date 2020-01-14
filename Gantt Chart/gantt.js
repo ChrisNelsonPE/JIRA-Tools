@@ -25,9 +25,16 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         // The default is blank when loading from the file system but that's OK.
         { name: 'domain', default: window.location.hostname },
         
+        { name: 'queryType', query: 'type', default: 'filter' }, 
+
         // Your "active issues" filter which has JQL like
         //   "sprint in openSprints()"
         { name: 'filterNumber', query: 'filter', default: "" },
+
+        { name: 'projects', query: 'proj', default: '' },
+        { name: 'limitToGroup', query: 'ltg', default: false },
+        { name: 'group', query: 'group', default: '' },
+        { name: 'includeUnscheduled', query: 'inun', default: false },
         
         // Default estimate for unestimated issues.  Better than 0 but
         // not really experience-based.
@@ -45,6 +52,8 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
 
     // FUTURE - this should be retrieved from the server
     var epicLinkField = "customfield_10006";
+
+    vm.queryTypes = [ "filter", "projects"];
 
     var storageKey = "jiraGantt";
 
@@ -282,11 +291,14 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
         return task;
     };
 
+    // TODO - consider release with start and release dates as a
+    // parent, not a milestone.
     var taskFromRelease = function(release) {
         var task = {};
 
         // A few issue fields we want to carry around with the
         // task.  taskLib ignores this.
+        // FIXME - add filer=... AND to JQL of link?
         task.data = {
             'key' : release.name,
             'link' : encodeURI('https://' + vm.domain
@@ -337,6 +349,7 @@ app.controller('MainCtrl', function($http, $q, $location, Jira) {
     
     // Look up epic keys to get IDs.  This has to be a post-processing step
     // because tasks may not include the epic as task is first converted.
+    // TODO - put releases/milestones in epics?
     var resolveEpics = function(tasks) {
         angular.forEach(tasks, function(task) {
             // If the task has no parent but has an epic, try to find

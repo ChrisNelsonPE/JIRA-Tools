@@ -1,3 +1,4 @@
+// TODO - this doesn't handle attachment dates
 // ==UserScript==
 // @name         Jira absolute timestamps
 // @namespace    http://tampermonkey.net/

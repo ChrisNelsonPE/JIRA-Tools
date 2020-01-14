@@ -929,6 +929,8 @@ app.controller('MainCtrl', function($http, $q) {
 
     taskLib.scheduleTasks(tasks, prioritizeTasks, constraints);
 
+    // FIXME - need to test the scheduling here.  testTest*()?
+
     g.setDateInputFormat("yyyy-mm-dd"); // ISO
     
     // Mark each task with the date of earliest milestone it is required for

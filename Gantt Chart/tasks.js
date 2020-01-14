@@ -157,6 +157,7 @@ var taskLib = (function() {
     
     // Decorate tasks to make schedling easier
     var preSchedule = function(tasks, constraints) {
+        // TODO - copy constraints?
         var c = constraints;
         if (c["type"] == "asap") {
             c.from = "start";
@@ -328,6 +329,7 @@ var taskLib = (function() {
                 // the delta ends up at the end (start or finish) of
                 // the day
                 if (available == 0) {
+                    // TODO - handle end of day as in the else below?
                     if (sign == -1) {
                         delta -= h * MS_PER_HOUR;
                     }

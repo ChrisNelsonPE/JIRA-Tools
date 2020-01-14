@@ -24,8 +24,6 @@
     <div>
       <label>Jira Domain:</label>
       <input type="text" ng-model="vm.domain"/>
-      <label>Filter:</label>
-      <input type="text" ng-model="vm.filterNumber"/>
     </div>
     <br>
     <div>
@@ -37,6 +35,34 @@
     <div>
       <input type="checkbox" ng-model="vm.remember">
       <label>Remember me</label>
+    </div>
+    <br>
+    <div>
+      <label>Query by:</label><br>
+      <span ng-repeat='t in vm.queryTypes'>
+        <input id="queryType-{{t}}"
+               type='radio'
+               name='queryType'
+               value='{{t}}' ng-model='vm.queryType'/>
+        <label for='queryType-{{t}}'>{{t}}</label>
+        <input ng-show='"{{t}}"=="filter"'
+               ng-disabled='vm.queryType!="filter"'
+               type='text'
+               ng-model='vm.filterNumber'/>
+        <span ng-show='"{{t}}"=="projects"'>
+          <input type='text'
+                 ng-disabled='vm.queryType!="projects"'
+                 ng-model='vm.projects'/>
+          <input type='checkbox'
+                 ng-disabled='vm.queryType!="projects"'
+                 ng-model='vm.limitToGroup'/>
+          <label>Limit to Jira group</label>
+          <input type='text'
+                 ng-disabled='vm.queryType!="projects" || !vm.limitToGroup'
+                 ng-model='vm.group'/>
+        </span>
+        <br>
+      </span>
     </div>
     <br>
     <div>

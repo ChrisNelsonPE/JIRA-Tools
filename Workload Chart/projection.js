@@ -85,6 +85,7 @@ app.controller('MainCtrl', function($window, $q, $location, Jira) {
         { name: 'credential', default: '' }
     ];
 
+    // TODO - consider adding issue (count)
     vm.units = [ "hour", "point" ];
 
     vm.categories = [ 'assignee', 'project', 'type', 'status' ];
@@ -373,6 +374,8 @@ app.controller('MainCtrl', function($window, $q, $location, Jira) {
             limitToGroup: vm.limitToGroup,
             group: vm.group
         };
+
+	// FIXME - if vm.projects == '$demo$', get demo issues
         
         var query = buildReleaseIssuesQuery(options, releases);
 
@@ -399,6 +402,8 @@ app.controller('MainCtrl', function($window, $q, $location, Jira) {
 
                 vm.charts[chartNum] = buildOneChart(workByCategory,
                                                     releaseDateStr);
+                // FIXME - this is unassigned because we combined code
+                // into getReleaseIssues()
                 vm.charts[chartNum].query = query;
             }, function errorCallback(response) {
                 console.log(response);
@@ -413,6 +418,12 @@ app.controller('MainCtrl', function($window, $q, $location, Jira) {
 
     vm.submit = function() {
         vm.credential = btoa(vm.userId + ":" + vm.password);
+
+	if (vm.domain === 'demo') {
+	    // FIXME - need to pass in demo data.
+	    Jira.when('getProjectReleases', []);
+	    Jira.when('getReleaseIssues', []);
+	}
 
         Jira.config(vm.domain, vm.credential);
 
@@ -432,14 +443,19 @@ app.controller('MainCtrl', function($window, $q, $location, Jira) {
         vm.charts = [];
         resetColors();
 
-        // Get the open releases for each project
-        Jira.getProjectReleases(vm.projects)
-            .then(function successCallBack(releases) {
-                processReleases(releases);
-        }, function errorCallback(response) {
-            console.log("Error retrieving releases");
-            alert(response.data.errorMessages[0]);
-        });
+        if (vm.projects == '$demo$') {
+            processReleases(getDemoReleases());
+        }
+        else {
+            // Get the open releases for each project
+            Jira.getProjectReleases(vm.projects)
+                .then(function successCallBack(releases) {
+                    processReleases(releases);
+                }, function errorCallback(response) {
+                    console.log("Error retrieving releases");
+                    alert(response.data.errorMessages[0]);
+                });
+        }
     };
 
     vm.onDateClick = function(chartNum) {
@@ -455,6 +471,12 @@ app.controller('MainCtrl', function($window, $q, $location, Jira) {
         $window.open(url);
     };
 
+    // TODO - handle shift-click or ctrl-click to go to the topic of
+    // the bar (user, status, etc.) *without* the chart's filter.
+    // That is, go to Joe's work, not just Joe's work for that release.
+    // See https://stackoverflow.com/a/25046513/7685
+    // That's going to require changing the query on the chart to
+    // break out releases from other filters
     vm.onChartClick = function(points, evt) {
         var index;
         // If the user clicked a bar, the chart tells us which
@@ -480,18 +502,24 @@ app.controller('MainCtrl', function($window, $q, $location, Jira) {
                 return;
             }
         }
-        
+
         // Which chart was clicked?
         var htmlId = evt.currentTarget.id;
         var chartNum = parseInt(htmlId.split('-')[1]);
 
-        // The base URL: matches filter for the chart
-        var url = "https://" + vm.domain + "/issues/"
-            + "?jql=" + vm.charts[chartNum].query;
+        var url = "https://" + vm.domain + "/issues/?jql=";
 
+        if (evt.shiftKey) {
+            // FIXME - we'd like to only include scheduled versions
+            url += "project in (" + vm.projects + ") AND statusCategory != Done";
+        }
+        else {
+            url += vm.charts[chartNum].query;
+        }
+        
         // Add a bar-specific filter clause
         url += " AND " + vm.charts[chartNum].filters[index];
-        
+
         url += " ORDER BY fixVersion ASC, priority DESC"
         
         $window.open(url);
@@ -527,6 +555,9 @@ app.controller('MainCtrl', function($window, $q, $location, Jira) {
     // * filter - a JQL filter clause which limits the chart filter to
     //            the bar's issues.
     // * order - the order that the bar should be displsyed in
+    //
+    // FUTURE: It might be more efficient to have a different way to get
+    // filter and order rather than putting them on every estimate.
     var estimateFromIssue = function(issue) {
         var estimate = {
             work : getRemainingWork(issue),

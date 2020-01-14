@@ -44,10 +44,16 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
     // Public functions
     var jira = {};
 
+    var demo = {};
+
     // Set the domain and credential used to access Jira.
     jira.config = function(domain, credential) {
         config.domain = domain;
         config.credential = credential;
+    };
+
+    jira.when = function(key, data) {
+	demo[key] = data;
     };
     
     // Returns a promise.  When that promise is satisfied, the
@@ -57,6 +63,10 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
     jira.getIssues = function(jqlQuery) {
         var deferred = $q.defer();
 
+	if (config.domain === 'demo') {
+	    deferred.resolve(demo['getIssues']);
+	}
+	else {
         var url = "https://" + config.domain + "/rest/api/2/";
         url += "search?jql=" + jqlQuery;
         url += "&maxResults=1000";
@@ -85,7 +95,7 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
                 }
                 deferred.reject(response);
             });
-
+	}
         return deferred.promise;
     };
 
@@ -114,6 +124,10 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
             deferred.reject();
         }
 
+	if (config.domain === 'demo') {
+	    deferred.resolve(demo['getProjectReleases']);
+	}
+	else {
         Promise.all(projectNameArray.map(function(projectName) {
             return getOneProjectReleases(projectName);
         })).then(function successCallback(results) {
@@ -123,8 +137,10 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
             }
             deferred.resolve(releases);
         });
+	}
         return deferred.promise;
     };
+
 
     // Get releases for one or more issues
     //
@@ -144,6 +160,17 @@ JiraService.factory('Jira', ['$http', '$q', function($http, $q) {
 
         return Object.keys(releases)
             .map(function(id) { return releases[id]; });
+    };
+    
+    jira.getReleaseIssues = function(options, releases) {
+	if (config.domain === 'demo') {
+            var deferred = $q.defer();
+	    deferred.resolve(demo['getReleaseIssues']);
+	    return deferred.promise;
+	}
+	else {
+            return jira.getIssues(buildReleaseIssuesQuery(options, releases));
+	}
     };
 
     // Add custom fields to the list managed by the service.

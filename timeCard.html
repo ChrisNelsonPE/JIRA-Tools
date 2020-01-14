@@ -72,6 +72,7 @@
       {{(vm.totalSeconds/3600).toFixed(2)}} hours logged.
     </span>
     <div ng-repeat="(author, seconds) in vm.secondsByAuthor">
+    <!-- TODO - it would be nice to ahve the author name link to the To Do list -->
     <h2>{{author}} logged {{(seconds/3600.0).toFixed(2)}} hours</h2><br>
     <table class="timeCard">
       <thead>

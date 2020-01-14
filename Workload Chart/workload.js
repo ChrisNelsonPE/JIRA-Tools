@@ -1,3 +1,6 @@
+// TODO - consider adding radio buttons to allow viewing workload for
+// a filter (as is), sprint, or epic
+
 var app = angular.module('jiraworkload', ['chart.js', 'JiraService']);
 
 // This only works if you
@@ -229,6 +232,7 @@ app.controller('MainCtrl', function($window, $http, $q, $location, Jira) {
         } else {
             url += "="+id;
         }
+        // TODO - add ordering?
         
         $window.open(url);
     }
