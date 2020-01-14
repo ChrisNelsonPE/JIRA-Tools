@@ -150,6 +150,8 @@ def notify_release(release):
         
     print('{0} {1} ({2})'.format(release['name'], when, release['releaseDate']))
 
+    # TODO - it would be useful here to show open issues by status
+    # That is, something like "Open issues: 3 new, 3 QA, 1 QA Passed, ..."
     
     # Customize as needed
     limits = {
